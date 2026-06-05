@@ -128,7 +128,7 @@
 
     /* ═══════════════════════════════════════════════════════════════════
        Keyframes
-    ═══════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════ */
 
     /* bubble entry — slides up and fades in */
     @keyframes bubble-in {
@@ -186,7 +186,7 @@
 
     /* ═══════════════════════════════════════════════════════════════════
        Bubble entry animations
-    ═══════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════ */
     .bubble {
       animation: bubble-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
     }
@@ -241,7 +241,7 @@
 
     /* ═══════════════════════════════════════════════════════════════════
        Transitions
-    ═══════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════ */
 
     /* buttons */
     .btn {
@@ -307,7 +307,7 @@
 
     /* ═══════════════════════════════════════════════════════════════════
        Reduce motion — respect OS preference
-    ═══════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════ */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 1ms !important;
@@ -318,7 +318,7 @@
 
     /* ═══════════════════════════════════════════════════════════════════
        Welcome screen
-    ═══════════════════════════════════════════════════════════════════ */
+    // ═══════════════════════════════════════════════════════════════════ */
     #welcome {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
@@ -358,22 +358,46 @@
 
     /* Cycling example commands */
     .welcome-examples {
-      height: 18px;
-      overflow: hidden;
+      height: 22px;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       animation: welcome-drop 500ms 160ms cubic-bezier(0.22,0.61,0.36,1) both;
     }
     .welcome-example {
-      position: absolute; inset: 0;
-      font-size: 11px;
+      position: absolute;
+      top: 0;
+      font-size: 13px;
       color: var(--dim);
       text-align: center;
       opacity: 0;
-      transition: opacity 500ms ease;
+      transition: opacity 600ms ease;
       white-space: nowrap;
       font-style: italic;
+      pointer-events: none;
     }
     .welcome-example.active { opacity: 1; }
+
+    /* Settings button on welcome screen */
+    .welcome-settings-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 11px;
+      transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+      animation: welcome-drop 500ms 300ms cubic-bezier(0.22,0.61,0.36,1) both;
+    }
+    .welcome-settings-btn:hover {
+      color: var(--text);
+      border-color: var(--dim);
+      background: var(--bg-2);
+    }
 
     /* Input row on welcome screen */
     .welcome-input-row {
@@ -484,7 +508,10 @@
     .model-item.active-model { border-color:var(--accent-d); }
     .model-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
     .dot-anthropic { background:hsl(31,80%,55%); }
+    .dot-openai    { background:hsl(140,55%,50%); }
+    .dot-gemini    { background:hsl(220,70%,60%); }
     .dot-ollama    { background:hsl(200,60%,55%); }
+    .dot-custom    { background:hsl(280,55%,60%); }
     .model-id    { font-family:var(--mono); font-size:10.5px; flex:1; color:var(--text); }
     .model-label { font-size:10px; color:var(--dim); }
     .model-remove { background:none; border:none; color:var(--dim); cursor:pointer;
@@ -530,6 +557,7 @@
     <input id="welcome-prompt" type="text"
       placeholder="What would you like to do?" autocomplete="off" spellcheck="false">
     <button id="welcome-send">Go</button>
+    <button class="welcome-settings-btn" id="welcome-settings-btn">Settings</button>
   </div>
 </div>
 
@@ -561,15 +589,39 @@
 <div id="settings-panel" class="hidden">
 
   <div class="s-section">
-    <div class="s-title">Anthropic API Key</div>
+    <div class="s-title">API Keys</div>
+
     <div class="s-row">
-      <div class="s-label">API Key</div>
+      <div class="s-label">Anthropic</div>
       <div class="key-row">
         <input class="s-input pw" id="api-key-input" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
         <button class="key-show-toggle" id="key-toggle" title="Show/hide">👁</button>
       </div>
-      <div class="s-hint">Stored in <code>storageDirectory/llm-settings.json</code> on disk.
-        Get a key at <a href="#" onclick="return false">console.anthropic.com</a>.</div>
+      <div class="s-hint"><a href="#" onclick="return false">console.anthropic.com</a></div>
+    </div>
+
+    <div class="s-row" style="margin-top:8px">
+      <div class="s-label">OpenAI</div>
+      <div class="key-row">
+        <input class="s-input pw" id="openai-key-input" placeholder="sk-…" autocomplete="off" spellcheck="false">
+        <button class="key-show-toggle" id="openai-key-toggle" title="Show/hide">👁</button>
+      </div>
+      <div class="s-hint"><a href="#" onclick="return false">platform.openai.com/api-keys</a></div>
+    </div>
+
+    <div class="s-row" style="margin-top:8px">
+      <div class="s-label">Gemini</div>
+      <div class="key-row">
+        <input class="s-input pw" id="gemini-key-input" placeholder="AIza…" autocomplete="off" spellcheck="false">
+        <button class="key-show-toggle" id="gemini-key-toggle" title="Show/hide">👁</button>
+      </div>
+      <div class="s-hint"><a href="#" onclick="return false">aistudio.google.com/app/apikey</a></div>
+    </div>
+
+    <div class="s-row" style="margin-top:8px">
+      <div class="s-label">Custom OpenAI-compatible endpoint</div>
+      <input class="s-input" id="custom-endpoint-input" placeholder="https://my-proxy.com/v1" autocomplete="off" spellcheck="false">
+      <div class="s-hint">Any API that accepts OpenAI chat completions format. Leave blank to use OpenAI directly.</div>
     </div>
   </div>
 
@@ -594,13 +646,14 @@
       <input class="s-input" id="new-model-label" placeholder="Label  e.g. Opus 4.6">
       <select id="new-model-provider">
         <option value="anthropic">Anthropic</option>
+        <option value="openai">OpenAI</option>
+        <option value="gemini">Gemini</option>
         <option value="ollama">Ollama</option>
+        <option value="custom">Custom</option>
       </select>
     </div>
     <button class="tb-btn" id="add-model-btn" style="margin-top:5px;align-self:flex-start">+ Add model</button>
   </div>
-
-
 
   <button class="s-save-btn" id="settings-save-btn" style="margin-top:18px">Save settings</button>
 </div>
@@ -610,7 +663,35 @@
 // Bootstrap
 // ═══════════════════════════════════════════════════════════════════════
 const { snapshot, history, settings: initSettings, lastJsResult } =
-  JSON.parse(decodeURIComponent("__PAYLOAD__"));
+  ((() => {
+    try {
+      return JSON.parse(decodeURIComponent("__PAYLOAD__"));
+    } catch {
+      // Stub for browser preview / development
+      return {
+        snapshot: { tempo: 120, scaleName: "Major", rootNote: 0, scaleMode: true,
+          tracks: [], scenes: [], cuePoints: [] },
+        history: [],
+        settings: {
+          anthropicApiKey: "", ollamaEndpoint: "http://localhost:11434",
+          ollamaModel: "llama3",
+          models: [
+            { id: "claude-sonnet-4-5",  label: "Claude Sonnet 4.5",    provider: "anthropic" },
+            { id: "claude-opus-4-6",    label: "Claude Opus 4.6",      provider: "anthropic" },
+            { id: "gpt-4o",             label: "GPT-4o",               provider: "openai" },
+            { id: "gpt-4o-mini",        label: "GPT-4o mini",          provider: "openai" },
+            { id: "gemini-2.0-flash",   label: "Gemini 2.0 Flash",     provider: "gemini" },
+            { id: "gemini-1.5-pro",     label: "Gemini 1.5 Pro",       provider: "gemini" },
+            { id: "local-ollama",       label: "Local (Ollama)",        provider: "ollama" },
+          ],
+          activeModelId: "claude-sonnet-4-5",
+          openaiApiKey: "", geminiApiKey: "", customEndpoint: "",
+          mixpanelToken: "", posthogApiKey: "", posthogHost: "",
+        },
+        lastJsResult: null,
+      };
+    }
+  })());
 
 let turns    = [...history];
 let pending  = [];           // validated Action[]
@@ -671,9 +752,12 @@ document.querySelectorAll(".tab").forEach(tab => {
 // Settings panel
 // ═══════════════════════════════════════════════════════════════════════
 function renderSettings() {
-  document.getElementById("api-key-input").value   = cfg.anthropicApiKey   || "";
-  document.getElementById("ollama-endpoint").value  = cfg.ollamaEndpoint   || "http://localhost:11434";
-  document.getElementById("ollama-model").value     = cfg.ollamaModel      || "llama3";
+  document.getElementById("api-key-input").value      = cfg.anthropicApiKey  || "";
+  document.getElementById("openai-key-input").value   = cfg.openaiApiKey     || "";
+  document.getElementById("gemini-key-input").value   = cfg.geminiApiKey     || "";
+  document.getElementById("custom-endpoint-input").value = cfg.customEndpoint || "";
+  document.getElementById("ollama-endpoint").value    = cfg.ollamaEndpoint   || "http://localhost:11434";
+  document.getElementById("ollama-model").value       = cfg.ollamaModel      || "llama3";
   renderModelList();
 }
 
@@ -685,7 +769,9 @@ function renderModelList() {
     row.className = "model-item" + (m.id === cfg.activeModelId ? " active-model" : "");
 
     const dot = document.createElement("div");
-    dot.className = "model-dot " + (m.provider === "anthropic" ? "dot-anthropic" : "dot-ollama");
+    const dotClass = { anthropic:"dot-anthropic", openai:"dot-openai",
+      gemini:"dot-gemini", ollama:"dot-ollama", custom:"dot-custom" };
+    dot.className = "model-dot " + (dotClass[m.provider] || "dot-custom");
 
     const idEl = document.createElement("div");
     idEl.className = "model-id";
@@ -738,15 +824,24 @@ document.getElementById("add-model-btn").addEventListener("click", () => {
   renderModelList();
 });
 
-// API key show/hide toggle
-document.getElementById("key-toggle").addEventListener("click", () => {
-  const inp = document.getElementById("api-key-input");
-  inp.classList.toggle("pw");
+// API key show/hide toggles
+["key-toggle","openai-key-toggle","gemini-key-toggle"].forEach(btnId => {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const targetId = { "key-toggle":"api-key-input",
+      "openai-key-toggle":"openai-key-input",
+      "gemini-key-toggle":"gemini-key-input" }[btnId];
+    document.getElementById(targetId)?.classList.toggle("pw");
+  });
 });
 
 // Save
 document.getElementById("settings-save-btn").addEventListener("click", () => {
   cfg.anthropicApiKey = document.getElementById("api-key-input").value.trim();
+  cfg.openaiApiKey    = document.getElementById("openai-key-input").value.trim();
+  cfg.geminiApiKey    = document.getElementById("gemini-key-input").value.trim();
+  cfg.customEndpoint  = document.getElementById("custom-endpoint-input").value.trim();
   cfg.ollamaEndpoint  = document.getElementById("ollama-endpoint").value.trim() || "http://localhost:11434";
   cfg.ollamaModel     = document.getElementById("ollama-model").value.trim()    || "llama3";
   rebuildModelSelector();
@@ -1318,8 +1413,7 @@ function renderHistory() {
     if (lastJsResult.logs?.length) {
       const logs = document.createElement("div");
       logs.className = "js-result-logs";
-      logs.textContent = lastJsResult.logs.join("
-");
+      logs.textContent = lastJsResult.logs.join("\n");
       body.appendChild(logs);
     }
     if (!lastJsResult.ok && lastJsResult.error) {
@@ -1337,7 +1431,7 @@ function renderHistory() {
 // ═══════════════════════════════════════════════════════════════════════
 // Mixpanel feature request capture
 // Uses the Mixpanel HTTP Tracking API directly — no SDK needed.
-// Project token is write-only (cannot read data) so it’s safe to store client-side.
+// Project token is write-only (cannot read data) so it's safe to store client-side.
 // ═══════════════════════════════════════════════════════════════════════
 async function captureFeatureRequest(limitation) {
   const token = __MIXPANEL_TOKEN__;
@@ -1387,12 +1481,37 @@ async function captureFeatureRequest(limitation) {
 // ═══════════════════════════════════════════════════════════════════════
 // LLM fetch — uses native tool_use for Anthropic; JSON prompt for Ollama
 // ═══════════════════════════════════════════════════════════════════════
+// ── OpenAI-compatible tool schema (used by OpenAI, Gemini, Custom) ───────
+function toOpenAITools() {
+  return TOOLS.map(t => ({
+    type: "function",
+    function: {
+      name:        t.name,
+      description: t.description,
+      parameters:  t.input_schema,
+    }
+  }));
+}
+
+// ── Parse OpenAI-style tool_calls response ────────────────────────────────
+function parseOpenAIResponse(data) {
+  const msg = data.choices?.[0]?.message;
+  if (!msg) throw new Error("No choices in response");
+  const text = msg.content || "";
+  const toolCalls = (msg.tool_calls || []).map(tc => ({
+    type: tc.function.name,
+    ...JSON.parse(tc.function.arguments || "{}"),
+  }));
+  return { text, toolCalls };
+}
+
 async function fetchLLM(userMessage) {
   const activeModel = cfg.models.find(m => m.id === cfg.activeModelId) ?? cfg.models[0];
+  const provider = activeModel?.provider || "anthropic";
   const messages = [...turns, { role:"user", content:userMessage }];
 
-  // ── Ollama ──────────────────────────────────────────────────────────
-  if (activeModel?.provider === "ollama") {
+  // ── Ollama (native /api/chat format, no tool_use) ─────────────────
+  if (provider === "ollama") {
     const endpoint = (cfg.ollamaEndpoint || "http://localhost:11434").replace(/\/$/, "");
     const model    = cfg.ollamaModel || "llama3";
     const resp = await fetch(`${endpoint}/api/chat`, {
@@ -1401,9 +1520,9 @@ async function fetchLLM(userMessage) {
       body: JSON.stringify({
         model, stream:false,
         system: buildSystemPrompt() +
-          `\n\nReturn ONLY valid JSON: {"text":"...","actions":[...]}\n` +
-          `actions is an array of objects with "type" matching a tool name plus its required fields.\n` +
-          `Emit [] for actions if no changes needed.`,
+          "\n\nReturn ONLY valid JSON: {\"text\":\"...\",\"actions\":[...]}\n" +
+          "actions is an array of objects with \"type\" matching a tool name plus its required fields.\n" +
+          "Emit [] for actions if no changes needed.",
         messages: messages.map(t => ({ role:t.role, content:t.content })),
       })
     });
@@ -1414,51 +1533,146 @@ async function fetchLLM(userMessage) {
     return { text: parsed.text ?? raw, toolCalls: parsed.actions ?? [] };
   }
 
-  // ── Anthropic API ───────────────────────────────────────────────────
-  const apiKey = cfg.anthropicApiKey;
-  if (!apiKey) throw new Error("No Anthropic API key set. Open ⚙ Settings to add one.");
-
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{
-      "Content-Type": "application/json",
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-calls": "true",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      model:       activeModel?.id ?? "claude-sonnet-4-5",
-      max_tokens:  4096,
-      system:      buildSystemPrompt(),
-      tools:       TOOLS,
-      tool_choice: { type:"auto" },
-      messages:    messages.map(t => ({ role:t.role, content:t.content })),
-    })
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message ?? `API error ${resp.status}`);
+  // ── Anthropic (native /v1/messages with tool_use) ─────────────────
+  if (provider === "anthropic") {
+    const apiKey = cfg.anthropicApiKey;
+    if (!apiKey) throw new Error("No Anthropic API key set. Open ⚙ Settings to add one.");
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-calls": "true",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        model:       activeModel?.id ?? "claude-sonnet-4-5",
+        max_tokens:  4096,
+        system:      buildSystemPrompt(),
+        tools:       TOOLS,
+        tool_choice: { type:"auto" },
+        messages:    messages.map(t => ({ role:t.role, content:t.content })),
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message ?? `Anthropic API error ${resp.status}`);
+    }
+    const data = await resp.json();
+    let text = "";
+    const toolCalls = [];
+    for (const block of data.content) {
+      if (block.type === "text")     text += block.text;
+      if (block.type === "tool_use") toolCalls.push({ type:block.name, ...block.input });
+    }
+    const limitation = parseLimitation(text);
+    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
+    return {
+      text: limitation ? limitation.reason : ambiguity ? null : text.trim(),
+      toolCalls, limitation, ambiguity,
+    };
   }
 
-  const data = await resp.json();
-  let text = "";
-  const toolCalls = [];
-
-  for (const block of data.content) {
-    if (block.type === "text")     text += block.text;
-    if (block.type === "tool_use") toolCalls.push({ type:block.name, ...block.input });
+  // ── OpenAI (chat completions + function calling) ──────────────────
+  if (provider === "openai") {
+    const apiKey = cfg.openaiApiKey;
+    if (!apiKey) throw new Error("No OpenAI API key set. Open ⚙ Settings to add one.");
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method:"POST",
+      headers:{
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model:       activeModel?.id ?? "gpt-4o",
+        max_tokens:  4096,
+        tools:       toOpenAITools(),
+        tool_choice: "auto",
+        messages:    [
+          { role:"system", content: buildSystemPrompt() },
+          ...messages.map(t => ({ role:t.role, content:t.content })),
+        ],
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message ?? `OpenAI API error ${resp.status}`);
+    }
+    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
+    const limitation = parseLimitation(text);
+    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
+    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
   }
 
-  // Detect structured responses — limitation or ambiguity
-  const limitation = parseLimitation(text);
-  const ambiguity  = !limitation ? parseAmbiguity(text) : null;
-  return {
-    text: limitation ? limitation.reason : ambiguity ? null : text.trim(),
-    toolCalls,
-    limitation,
-    ambiguity,
-  };
+  // ── Gemini (OpenAI-compatible endpoint) ──────────────────────────
+  if (provider === "gemini") {
+    const apiKey = cfg.geminiApiKey;
+    if (!apiKey) throw new Error("No Gemini API key set. Open ⚙ Settings to add one.");
+    const model = activeModel?.id ?? "gemini-2.0-flash";
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+      {
+        method:"POST",
+        headers:{
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens:  4096,
+          tools:       toOpenAITools(),
+          tool_choice: "auto",
+          messages:    [
+            { role:"system", content: buildSystemPrompt() },
+            ...messages.map(t => ({ role:t.role, content:t.content })),
+          ],
+        })
+      }
+    );
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message ?? `Gemini API error ${resp.status}`);
+    }
+    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
+    const limitation = parseLimitation(text);
+    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
+    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
+  }
+
+  // ── Custom OpenAI-compatible endpoint ────────────────────────────
+  if (provider === "custom") {
+    const endpoint = cfg.customEndpoint?.replace(/\/$/, "");
+    if (!endpoint) throw new Error("No custom endpoint set. Open ⚙ Settings to add one.");
+    // Try Anthropic key first, then OpenAI key, then no auth
+    const apiKey = cfg.anthropicApiKey || cfg.openaiApiKey || "";
+    const resp = await fetch(`${endpoint}/chat/completions`, {
+      method:"POST",
+      headers:{
+        "Content-Type": "application/json",
+        ...(apiKey ? { "Authorization": `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model:       activeModel?.id ?? "default",
+        max_tokens:  4096,
+        tools:       toOpenAITools(),
+        tool_choice: "auto",
+        messages:    [
+          { role:"system", content: buildSystemPrompt() },
+          ...messages.map(t => ({ role:t.role, content:t.content })),
+        ],
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message ?? `Custom endpoint error ${resp.status}`);
+    }
+    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
+    const limitation = parseLimitation(text);
+    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
+    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
 }
 
 function parseLimitation(text) {
@@ -1607,53 +1821,78 @@ document.addEventListener("keydown", e => {
     closeWithResult({ actions:[], history:turns, model:cfg.activeModelId, settings:cfg });
 });
 
-═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // Welcome screen
 // ═══════════════════════════════════════════════════════════════════════
 const EXAMPLES = [
-  "“mute the kick and solo the bass”",
-  "“set tempo to 128 and rename this track Drums”",
-  "“add a compressor and reverb to vocals”",
-  "“pack all clips on the bass track”",
-  "“make all MIDI tracks orange”",
-  "“rename all tracks to lowercase”",
-  "“delete clips shorter than 1 bar”",
-  "“create 4 new scenes”",
-  "“sololo the low end”",
-  "“add a cue point at bar 9 called Drop”",
-  "“duplicate the drum track”",
-  "“set the reverb decay on vocals to 0.8”",
+  'mute the kick and solo the bass',
+  'set tempo to 128 and rename this track Drums',
+  'add a compressor and reverb to vocals',
+  'pack all clips on the bass track — remove the gaps',
+  'make all MIDI tracks orange',
+  'rename all tracks to lowercase',
+  'delete clips shorter than 1 bar',
+  'create 4 new scenes',
+  'solo the low end',
+  'add a cue point at bar 9 called Drop',
+  'duplicate the drum track',
+  'set the reverb decay on vocals to 0.8',
 ];
 
 function initWelcome() {
-  const welcome = document.getElementById("welcome");
-  const exBox   = document.getElementById("welcome-examples");
-  const wPrompt = document.getElementById("welcome-prompt");
-  const wSend   = document.getElementById("welcome-send");
+  const welcome    = document.getElementById("welcome");
+  const exBox      = document.getElementById("welcome-examples");
+  const wPrompt    = document.getElementById("welcome-prompt");
+  const wSend      = document.getElementById("welcome-send");
+  const wSettings  = document.getElementById("welcome-settings-btn");
 
-  // If there’s existing history, skip welcome immediately
+  // If there's existing history, skip welcome immediately
   if (turns.length > 0) {
     welcome.classList.add("gone");
     return;
   }
 
+  // Settings button — hide welcome immediately, switch to settings tab
+  wSettings.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearInterval(exTimer);
+    welcome.classList.add("gone");
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelector('[data-tab="settings"]').classList.add("active");
+    document.getElementById("chat-panel").classList.add("hidden");
+    document.getElementById("settings-panel").classList.remove("hidden");
+    renderSettings();
+  });
+
   // Build cycling example elements
   EXAMPLES.forEach((ex, i) => {
     const el = document.createElement("div");
-    el.className = "welcome-example" + (i === 0 ? " active" : "");
+    el.className = "welcome-example";
     el.textContent = ex;
     exBox.appendChild(el);
   });
 
-  // Cycle examples with crossfade
   let exIdx = 0;
+  let exTimer = null;
+  const allExamples = () => exBox.querySelectorAll(".welcome-example");
+
+  // Defer first .active by one rAF so browser paints opacity:0 first,
+  // giving the CSS transition a "from" state to animate from.
+  requestAnimationFrame(() => {
+    const first = allExamples()[0];
+    if (first) {
+      first.classList.add("active");
+    }
+  });
+
   const cycleExamples = () => {
-    const els = exBox.querySelectorAll(".welcome-example");
+    const els = allExamples();
     els[exIdx].classList.remove("active");
     exIdx = (exIdx + 1) % els.length;
     els[exIdx].classList.add("active");
   };
-  const exTimer = setInterval(cycleExamples, 2400);
+
+  exTimer = setInterval(cycleExamples, 2400);
 
   // Dismiss welcome — fade out then hide, move prompt text to main input
   function dismissWelcome(initialPrompt) {

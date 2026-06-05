@@ -15,7 +15,7 @@ export interface JsToolResult {
 interface JournalData {
   history: Turn[];
   model: string;
-  lastJsResult?: JsToolResult | undefined;
+  lastJsResult?: JsToolResult;
 }
 
 /**
@@ -77,7 +77,7 @@ export class Session {
   private save(): void {
     if (!this.journalPath) return;
     try {
-      const data: JournalData = { history: this.history, model: this.model, lastJsResult: this.lastJsResult ?? undefined };
+      const data = { history: this.history, model: this.model, lastJsResult: this.lastJsResult ?? undefined };
       fs.writeFileSync(this.journalPath, JSON.stringify(data, null, 2), "utf8");
     } catch (e) {
       console.error("[Q] Failed to save journal:", e);

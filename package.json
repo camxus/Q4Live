@@ -7,7 +7,7 @@
     "build": "tsc --noEmit && tsx build.js",
     "start": "tsx build.js && extensions-cli run",
     "build:prod": "tsx build.js --production",
-    "package": "tsx build.js --production && npx extensions-cli package -o dist/llm-controller.ablx"
+    "package": "MIXPANEL_TOKEN=$MIXPANEL_TOKEN tsx build.js --production && npx extensions-cli package -o dist/llm-controller.ablx"
   },
   "dependencies": {
     "@ableton-extensions/sdk": "file:./ableton-extensions-sdk-1.0.0-beta.0.tgz"

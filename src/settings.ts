@@ -4,27 +4,37 @@ import * as path from "node:path";
 const SETTINGS_FILE = "llm-settings.json";
 
 export interface ModelEntry {
-  id: string;       // e.g. "claude-opus-4-6" or "my-fine-tune"
-  label: string;    // display name shown in the selector
-  provider: "anthropic" | "ollama";
+  id: string;
+  label: string;
+  provider: "anthropic" | "openai" | "gemini" | "ollama" | "custom";
 }
 
 export interface Settings {
   anthropicApiKey: string;
+  openaiApiKey: string;
+  geminiApiKey: string;
+  customEndpoint: string;
   ollamaEndpoint: string;
   ollamaModel: string;
   models: ModelEntry[];
   activeModelId: string;
-  mixpanelDistinctId?: string;   // stable anonymous install ID, generated on first capture
+  mixpanelDistinctId?: string;
 }
 
 const DEFAULTS: Settings = {
   anthropicApiKey: "",
-  ollamaEndpoint: "http://localhost:11434",
-  ollamaModel: "llama3",
+  openaiApiKey:    "",
+  geminiApiKey:    "",
+  customEndpoint:  "",
+  ollamaEndpoint:  "http://localhost:11434",
+  ollamaModel:     "llama3",
   models: [
     { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "anthropic" },
     { id: "claude-opus-4-6",   label: "Claude Opus 4.6",   provider: "anthropic" },
+    { id: "gpt-4o",            label: "GPT-4o",            provider: "openai" },
+    { id: "gpt-4o-mini",       label: "GPT-4o mini",       provider: "openai" },
+    { id: "gemini-2.0-flash",  label: "Gemini 2.0 Flash",  provider: "gemini" },
+    { id: "gemini-1.5-pro",    label: "Gemini 1.5 Pro",    provider: "gemini" },
     { id: "local-ollama",      label: "Local (Ollama)",     provider: "ollama" },
   ],
   activeModelId: "claude-sonnet-4-5",
@@ -41,9 +51,7 @@ export class SettingsStore {
     this.data = this.load();
   }
 
-  get(): Settings {
-    return { ...this.data };
-  }
+  get(): Settings { return { ...this.data }; }
 
   set(patch: Partial<Settings>): void {
     this.data = { ...this.data, ...patch };
@@ -53,24 +61,16 @@ export class SettingsStore {
   private save(): void {
     if (!this.settingsPath) return;
     try {
-      fs.writeFileSync(
-        this.settingsPath,
-        JSON.stringify(this.data, null, 2),
-        "utf8"
-      );
+      fs.writeFileSync(this.settingsPath, JSON.stringify(this.data, null, 2), "utf8");
     } catch (e) {
       console.error("[Q] Failed to save settings:", e);
     }
   }
 
   private load(): Settings {
-    if (!this.settingsPath || !fs.existsSync(this.settingsPath)) {
-      return { ...DEFAULTS };
-    }
+    if (!this.settingsPath || !fs.existsSync(this.settingsPath)) return { ...DEFAULTS };
     try {
-      const raw = fs.readFileSync(this.settingsPath, "utf8");
-      const parsed = JSON.parse(raw) as Partial<Settings>;
-      // Merge with defaults so new fields added in updates are present
+      const parsed = JSON.parse(fs.readFileSync(this.settingsPath, "utf8")) as Partial<Settings>;
       return {
         ...DEFAULTS,
         ...parsed,

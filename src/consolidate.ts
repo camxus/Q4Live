@@ -43,26 +43,26 @@ export interface ConsolidateResult {
 
 function snapshotClip(clip: MidiClip<"1.0.0"> | AudioClip<"1.0.0">): ClipSnapshot {
   const base = {
-    startTime: clip.startTime,
-    duration: clip.duration,
-    name: clip.name,
-    color: clip.color,
-    muted: clip.muted,
-    looping: clip.looping,
-    loopStart: clip.loopStart,
-    loopEnd: clip.loopEnd,
+    startTime:   clip.startTime,
+    duration:    clip.duration,
+    name:        clip.name,
+    color:       clip.color,
+    muted:       clip.muted,
+    looping:     clip.looping,
+    loopStart:   clip.loopStart,
+    loopEnd:     clip.loopEnd,
     startMarker: clip.startMarker,
-    endMarker: clip.endMarker,
+    endMarker:   clip.endMarker,
   };
 
   if (clip instanceof MidiClip) {
     return { kind: "midi", ...base, notes: clip.notes };
   } else {
     return {
-      kind: "audio",
+      kind:     "audio",
       ...base,
       filePath: clip.filePath,
-      warping: clip.warping,
+      warping:  clip.warping,
       warpMode: clip.warpMode,
       // warpMarkers not captured — read-only, cannot be restored
     };
@@ -102,19 +102,19 @@ async function recreateClip(
         },
       }),
     });
-    if (snap.warping !== undefined) newClip.warping = snap.warping;
+    if (snap.warping !== undefined) newClip.warping  = snap.warping;
     if (snap.warpMode !== undefined) newClip.warpMode = snap.warpMode;
     // Note: warpMarkers cannot be restored (read-only in SDK v1.0.0)
   }
 
   // Restore shared properties
-  newClip.name = snap.name;
-  newClip.color = snap.color;
-  newClip.muted = snap.muted;
+  newClip.name    = snap.name;
+  newClip.color   = snap.color;
+  newClip.muted   = snap.muted;
   newClip.looping = snap.looping;
   // if (snap.looping) {
   //   newClip.loopStart = snap.loopStart;
-  //   newClip.loopEnd = snap.loopEnd;
+  //   newClip.loopEnd   = snap.loopEnd;
   // }
 }
 
@@ -131,9 +131,9 @@ export async function consolidateTrackGaps(
   track: Track<"1.0.0">
 ): Promise<ConsolidateResult> {
   const result: ConsolidateResult = {
-    trackName: track.name,
-    clipsProcessed: 0,
-    skipped: [],
+    trackName:       track.name,
+    clipsProcessed:  0,
+    skipped:         [],
   };
 
   const clips = track.arrangementClips;
@@ -173,8 +173,8 @@ export async function consolidateTrackGaps(
 
   // Delete all original clips in the range
   const rangeStart = snapshots[0]!.startTime;
-  const rangeEnd = snapshots[snapshots.length - 1]!.startTime +
-    snapshots[snapshots.length - 1]!.duration;
+  const rangeEnd   = snapshots[snapshots.length - 1]!.startTime +
+                     snapshots[snapshots.length - 1]!.duration;
   await track.clearClipsInRange(rangeStart, rangeEnd);
 
   // Recreate clips packed from the position of the first original clip
