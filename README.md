@@ -11,7 +11,7 @@ Built on the Ableton Extensions SDK v1.0.0-beta.0.
 
 * Node.js ≥ 22.11
 * Ableton Live with the Extensions SDK beta
-* An Anthropic API key (for Claude) **or** [Ollama](https://ollama.ai) running locally
+* An Anthropic API key (for Claude), an OpenAI-compatible API endpoint, **or** [Ollama](https://ollama.ai) running locally
 
 ### 2. Install
 
@@ -65,9 +65,9 @@ The generated `.ablx` file can be installed in Ableton Live through the Extensio
 
 ## Usage
 
-1. Right-click any **MIDI** or **Audio track** in Live → **"Ask Claude…"**
+1. Right-click any **MIDI** or **Audio track** in Live → **"Ask Q…"**
 2. Type what you want in the chat panel (e.g. *"Mute the bass and add a reverb to vocals"*)
-3. Claude replies with an explanation and proposes actions
+3. Q replies with an explanation and proposes actions
 4. Click **Apply ✓** to execute everything as one undo step
 
 ### Selection Context
@@ -89,9 +89,27 @@ This allows the model to make more targeted edits.
 
 Switch between:
 
-* Claude Sonnet
-* Claude Opus
-* Local Ollama models
+- Anthropic
+  - Claude Sonnet
+  - Claude Opus
+
+- OpenAI
+  - GPT-4o
+  - GPT-4o mini
+
+- Google Gemini
+  - Gemini 2.0 Flash
+  - Gemini 1.5 Pro
+
+- Local Models
+  - Ollama (any installed model)
+
+- Custom OpenAI-Compatible APIs
+  - OpenRouter
+  - Together AI
+  - Groq
+  - Self-hosted proxies
+  - Any endpoint implementing the OpenAI Chat Completions API
 
 using the selector in the top toolbar.
 
@@ -163,7 +181,7 @@ This means every change generated from a single prompt becomes one Ableton Live 
 
 ## Notes
 
-* Claude receives a structured snapshot of the current Live Set rather than raw project files.
+* Q receives a structured snapshot of the current Live Set rather than raw project files.
 * Conversation history is stored locally inside the extension storage directory.
 * Ollama support enables fully local operation without external API calls.
 * The extension never modifies the Live Set until the user explicitly clicks **Apply**.

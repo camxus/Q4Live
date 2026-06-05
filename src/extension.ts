@@ -22,10 +22,10 @@ export function activate(activation: ActivationContext): void {
 
   // ── Context menu entry points ──────────────────────────────────────────
 
-  void api.ui.registerContextMenuAction("MidiTrack",  "Ask Claude…", "llm.chat");
-  void api.ui.registerContextMenuAction("AudioTrack", "Ask Claude…", "llm.chat");
-  void api.ui.registerContextMenuAction("MidiTrack.ArrangementSelection",  "Ask Claude about selection…", "llm.chatSelection");
-  void api.ui.registerContextMenuAction("AudioTrack.ArrangementSelection", "Ask Claude about selection…", "llm.chatSelection");
+  void api.ui.registerContextMenuAction("MidiTrack",  "Ask Q…", "llm.chat");
+  void api.ui.registerContextMenuAction("AudioTrack", "Ask Q…", "llm.chat");
+  void api.ui.registerContextMenuAction("MidiTrack.ArrangementSelection",  "Ask Q about selection…", "llm.chatSelection");
+  void api.ui.registerContextMenuAction("AudioTrack.ArrangementSelection", "Ask Q about selection…", "llm.chatSelection");
 
   // ── Commands ───────────────────────────────────────────────────────────
 
