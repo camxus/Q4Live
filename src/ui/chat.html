@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    input, button, select, textarea { font: inherit; }
+
+    :root {
+      --bg:        hsl(0,0%,14%);
+      --bg-2:      hsl(0,0%,19%);
+      --bg-3:      hsl(0,0%,24%);
+      --bg-4:      hsl(0,0%,10%);
+      --text:      hsl(0,0%,71%);
+      --dim:       hsl(0,0%,45%);
+      --bright:    hsl(0,0%,85%);
+      --accent:    hsl(31,100%,67%);
+      --accent-d:  hsl(31,60%,40%);
+      --border:    hsl(0,0%,9%);
+      --input-bg:  hsl(0,0%,11%);
+      --red:       hsl(0,55%,55%);
+      --yellow:    hsl(45,75%,55%);
+      --green:     hsl(140,45%,48%);
+      --r:         3px;
+      --font:      "AbletonSansSmall","Helvetica Neue",Arial,sans-serif;
+      --mono:      "AbletonSansMono","SF Mono","Consolas",monospace;
+    }
+
+    html,body { height:100%; background:var(--bg); color:var(--text);
+      font-family:var(--font); font-size:11.5px; font-weight:500;
+      -webkit-font-smoothing:antialiased; }
+    body { display:flex; flex-direction:column; overflow:hidden; }
+
+    /* ── Top bar ── */
+    #topbar { display:flex; align-items:center; gap:7px; padding:6px 10px;
+      background:var(--bg-2); border-bottom:1px solid var(--border);
+      flex-shrink:0; user-select:none; min-height:34px; }
+    .logo { font-size:12px; font-weight:700; color:var(--accent); letter-spacing:.04em; }
+
+    /* model selector pill */
+    #model-select { background:var(--input-bg); color:var(--text);
+      border:1px solid var(--border); padding:2px 6px; border-radius:var(--r);
+      cursor:pointer; font-size:11px; max-width:160px; }
+
+    .tb-btn { background:var(--bg-3); color:var(--dim); border:1px solid var(--border);
+      padding:2px 9px; border-radius:9px; cursor:pointer; font-size:10.5px;
+      white-space:nowrap; line-height:1.6; }
+    .tb-btn:hover { color:var(--text); }
+    .ml { margin-left:auto; }
+
+    /* ── Tab bar (Chat / Settings) ── */
+    #tabs { display:flex; background:var(--bg-2); border-bottom:1px solid var(--border);
+      flex-shrink:0; }
+    .tab { padding:6px 14px; cursor:pointer; font-size:11px; color:var(--dim);
+      border-bottom:2px solid transparent; user-select:none; }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab:hover:not(.active) { color:var(--text); }
+
+    /* ── Panels ── */
+    #chat-panel,#settings-panel { flex:1; display:flex; flex-direction:column;
+      overflow:hidden; }
+    .hidden { display:none !important; }
+
+    /* ── Messages ── */
+    #messages { flex:1; overflow-y:auto; padding:10px 12px;
+      display:flex; flex-direction:column; gap:7px; scroll-behavior:smooth; }
+    #messages::-webkit-scrollbar { width:5px; }
+    #messages::-webkit-scrollbar-thumb { background:var(--bg-3); border-radius:3px; }
+
+    .bubble { max-width:88%; padding:7px 10px; border-radius:var(--r);
+      line-height:1.58; font-size:11px; word-break:break-word; white-space:pre-wrap; }
+    .bubble.user      { align-self:flex-end; background:var(--bg-3);
+                         border:1px solid var(--border); color:var(--bright); }
+    .bubble.assistant { align-self:flex-start; background:var(--bg-2);
+                         border:1px solid var(--border); }
+    .bubble.error     { align-self:flex-start; background:hsl(0,40%,15%);
+                         border:1px solid hsl(0,40%,25%); color:hsl(0,60%,70%); }
+    .bubble.warning   { align-self:flex-start; background:hsl(45,35%,13%);
+                         border:1px solid hsl(45,40%,23%); color:hsl(45,65%,65%); }
+    .bubble.thinking  { align-self:flex-start; background:var(--bg-2);
+                         border:1px solid var(--border); color:var(--dim);
+                         font-style:italic; }
+    .bubble.limitation  { align-self:flex-start; background:hsl(30,30%,13%);
+                         border:1px solid hsl(30,50%,25%); }
+    /* JS result card — shown at top of next dialog if a JS tool ran */
+    .js-result-banner { display:flex; align-items:flex-start; gap:8px; padding:7px 10px;
+      background:hsl(260,20%,14%); border:1px solid hsl(260,35%,28%);
+      border-radius:var(--r); font-size:11px; margin-bottom:4px;
+      animation: bubble-in 180ms cubic-bezier(0.22,0.61,0.36,1) both; }
+    .js-result-banner.err { background:hsl(0,25%,14%); border-color:hsl(0,40%,28%); }
+    .js-result-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0;
+      margin-top:3px; background:hsl(260,60%,60%); }
+    .js-result-banner.err .js-result-dot { background:var(--red); }
+    .js-result-body { flex:1; }
+    .js-result-label { font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.07em; color:hsl(260,60%,60%); margin-bottom:2px; }
+    .js-result-banner.err .js-result-label { color:hsl(0,60%,65%); }
+    .js-result-desc { color:var(--text); margin-bottom:3px; }
+    .js-result-logs { font-family:var(--mono); font-size:9.5px; color:var(--dim);
+      white-space:pre-wrap; margin-top:3px; }
+    .bubble.ambiguity   { align-self:flex-start; background:hsl(200,25%,13%);
+                         border:1px solid hsl(200,40%,25%); }
+    .ambiguity-action-preview { font-family:var(--mono); font-size:9.5px;
+      color:hsl(200,50%,55%); margin:4px 0 6px;
+      padding:3px 7px; background:var(--bg-4); border-radius:var(--r);
+      border-left:2px solid hsl(200,50%,35%); }
+    .ambiguity-candidates { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+    .candidate-btn { background:var(--bg-3); color:var(--text);
+      border:1px solid hsl(200,35%,28%); padding:3px 10px; border-radius:8px;
+      cursor:pointer; font-size:10.5px; font-family:var(--font);
+      transition: background 120ms, border-color 120ms, color 120ms, transform 80ms; }
+    .candidate-btn:hover { background:hsl(200,25%,22%); border-color:hsl(200,50%,45%);
+      color:hsl(200,80%,75%); }
+    .candidate-btn:active { transform:scale(0.96); }
+    .candidate-btn.chosen { background:hsl(200,40%,22%); border-color:hsl(200,60%,50%);
+      color:hsl(200,80%,75%); pointer-events:none; }
+    .limitation-label { font-size:10px; color:hsl(30,70%,55%); font-weight:700;
+      letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
+    .limitation-text  { font-size:11px; color:var(--text); line-height:1.55; }
+    .request-feature-btn { margin-top:8px; display:inline-flex; align-items:center; gap:5px;
+      background:hsl(30,70%,55%); color:hsl(0,0%,10%); border:none; padding:4px 11px;
+      border-radius:9px; cursor:pointer; font-size:10.5px; font-weight:700; font-family:var(--font); }
+    .request-feature-btn:hover { filter:brightness(1.1); }
+    .request-feature-btn:disabled { opacity:.5; cursor:default; }
+    .request-feature-btn.sent { background:var(--green); }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Keyframes
+    ═══════════════════════════════════════════════════════════════════ */
+
+    /* bubble entry — slides up and fades in */
+    @keyframes bubble-in {
+      from { opacity:0; transform:translateY(6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* user bubble entry — slides in from the right */
+    @keyframes bubble-in-right {
+      from { opacity:0; transform:translateX(10px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+
+    /* thinking dots pulse */
+    @keyframes thinking-pulse {
+      0%,100% { opacity:0.35; }
+      50%      { opacity:1; }
+    }
+
+    /* action row stagger-in */
+    @keyframes row-in {
+      from { opacity:0; transform:translateX(-4px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+
+    /* apply button pop-in */
+    @keyframes pop-in {
+      0%   { opacity:0; transform:scale(0.88); }
+      70%  { transform:scale(1.04); }
+      100% { opacity:1; transform:scale(1); }
+    }
+
+    /* settings panel slide-in */
+    @keyframes slide-down {
+      from { opacity:0; transform:translateY(-8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* limitation / ambiguity card pulse border */
+    @keyframes border-pulse {
+      0%,100% { border-color: hsl(30,50%,25%); }
+      50%      { border-color: hsl(30,70%,40%); }
+    }
+    @keyframes border-pulse-blue {
+      0%,100% { border-color: hsl(200,40%,25%); }
+      50%      { border-color: hsl(200,60%,40%); }
+    }
+
+    /* sent checkmark scale */
+    @keyframes check-pop {
+      0%   { transform:scale(0.7); }
+      60%  { transform:scale(1.15); }
+      100% { transform:scale(1); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Bubble entry animations
+    ═══════════════════════════════════════════════════════════════════ */
+    .bubble {
+      animation: bubble-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+    .bubble.user {
+      animation: bubble-in-right 160ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    /* thinking indicator — animated dots */
+    .bubble.thinking {
+      animation: bubble-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+    .thinking-dots span {
+      display:inline-block;
+      animation: thinking-pulse 1.1s ease-in-out infinite;
+      font-style:normal;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.18s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+    /* action rows stagger in */
+    .action-row {
+      animation: row-in 140ms ease both;
+    }
+    .action-row:nth-child(1)  { animation-delay:  30ms; }
+    .action-row:nth-child(2)  { animation-delay:  60ms; }
+    .action-row:nth-child(3)  { animation-delay:  90ms; }
+    .action-row:nth-child(4)  { animation-delay: 120ms; }
+    .action-row:nth-child(5)  { animation-delay: 150ms; }
+    .action-row:nth-child(6)  { animation-delay: 180ms; }
+    .action-row:nth-child(7)  { animation-delay: 210ms; }
+    .action-row:nth-child(8)  { animation-delay: 240ms; }
+
+    /* apply button fade-pop */
+    #apply-btn {
+      animation: pop-in 220ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    /* settings panel crossfade */
+    #settings-panel:not(.hidden) {
+      animation: slide-down 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    /* limitation card border pulse (3 pulses then stops) */
+    .bubble.limitation {
+      animation: bubble-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both,
+                 border-pulse 700ms ease-in-out 200ms 3;
+    }
+    .bubble.ambiguity {
+      animation: bubble-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both,
+                 border-pulse-blue 700ms ease-in-out 200ms 3;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Transitions
+    ═══════════════════════════════════════════════════════════════════ */
+
+    /* buttons */
+    .btn {
+      transition: border-color 120ms ease, color 120ms ease,
+                  background 120ms ease, filter 120ms ease,
+                  transform 80ms ease;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.96); }
+
+    .tb-btn {
+      transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    .request-feature-btn {
+      transition: filter 120ms ease, background 200ms ease, transform 80ms ease;
+    }
+    .request-feature-btn:active:not(:disabled) { transform: scale(0.95); }
+    .request-feature-btn.sent {
+      animation: check-pop 300ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
+
+    /* model selector */
+    #model-select {
+      transition: border-color 120ms ease;
+    }
+    #model-select:focus { border-color: var(--dim); outline:none; }
+
+    /* prompt textarea */
+    #prompt {
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    #prompt:focus {
+      outline:none;
+      border-color: var(--dim);
+      box-shadow: 0 0 0 1px hsla(0,0%,45%,0.2);
+    }
+
+    /* settings inputs */
+    .s-input {
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .s-input:focus {
+      outline:none;
+      border-color: var(--dim);
+      box-shadow: 0 0 0 1px hsla(0,0%,45%,0.15);
+    }
+
+    /* tab indicator */
+    .tab {
+      transition: color 150ms ease, border-bottom-color 150ms ease;
+    }
+
+    /* send button loading state */
+    #send-btn[disabled] {
+      opacity: 0.5;
+    }
+
+    /* model item hover in settings */
+    .model-item {
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .model-item:hover { background: var(--bg-4); }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Reduce motion — respect OS preference
+    ═══════════════════════════════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-delay:    0ms !important;
+        transition-duration: 1ms !important;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Welcome screen
+    ═══════════════════════════════════════════════════════════════════ */
+    #welcome {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: var(--bg);
+      z-index: 10;
+      padding: 0 32px 40px;
+      gap: 28px;
+      transition: opacity 320ms ease;
+    }
+    #welcome.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #welcome.gone { display: none; }
+
+    /* Q mark */
+    .welcome-q {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -.02em;
+      line-height: 1;
+      animation: welcome-drop 500ms cubic-bezier(0.22,0.61,0.36,1) both;
+    }
+    @keyframes welcome-drop {
+      from { opacity:0; transform: translateY(-18px) scale(0.85); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+
+    .welcome-tagline {
+      font-size: 13px;
+      color: var(--dim);
+      margin-top: -20px;
+      animation: welcome-drop 500ms 80ms cubic-bezier(0.22,0.61,0.36,1) both;
+    }
+
+    /* Cycling example commands */
+    .welcome-examples {
+      height: 18px;
+      overflow: hidden;
+      position: relative;
+      animation: welcome-drop 500ms 160ms cubic-bezier(0.22,0.61,0.36,1) both;
+    }
+    .welcome-example {
+      position: absolute; inset: 0;
+      font-size: 11px;
+      color: var(--dim);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 500ms ease;
+      white-space: nowrap;
+      font-style: italic;
+    }
+    .welcome-example.active { opacity: 1; }
+
+    /* Input row on welcome screen */
+    .welcome-input-row {
+      display: flex;
+      gap: 7px;
+      width: 100%;
+      max-width: 420px;
+      animation: welcome-drop 500ms 240ms cubic-bezier(0.22,0.61,0.36,1) both;
+    }
+    #welcome-prompt {
+      flex: 1;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      border-radius: var(--r);
+      font: inherit;
+      font-size: 11.5px;
+      line-height: 1.4;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    #welcome-prompt:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px hsla(31,100%,67%,0.2);
+    }
+    #welcome-prompt::placeholder { color: var(--dim); }
+    #welcome-send {
+      background: var(--accent);
+      color: hsl(0,0%,10%);
+      border: none;
+      padding: 7px 16px;
+      border-radius: var(--r);
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 120ms ease, transform 80ms ease;
+    }
+    #welcome-send:hover { filter: brightness(1.1); }
+    #welcome-send:active { transform: scale(0.96); }
+
+    /* execute_js code card */
+    .js-card { margin-top:8px; border-top:1px solid var(--border); padding-top:6px; }
+    .js-card-label { font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.07em; color:hsl(260,60%,60%); margin-bottom:4px; }
+    .js-card-desc { font-size:10.5px; color:var(--text); margin-bottom:5px; line-height:1.5; }
+    .js-code-toggle { background:none; border:none; color:var(--dim); cursor:pointer;
+      font-size:9.5px; font-family:var(--mono); padding:0; text-decoration:underline; }
+    .js-code-toggle:hover { color:var(--text); }
+    .js-code-block { display:none; margin-top:5px; padding:7px 9px;
+      background:var(--bg-4); border-radius:var(--r); border:1px solid var(--border);
+      font-family:var(--mono); font-size:9.5px; color:hsl(260,50%,70%);
+      white-space:pre-wrap; word-break:break-all; max-height:140px; overflow-y:auto; }
+    .js-code-block.open { display:block;
+      animation: slide-down 150ms cubic-bezier(0.22,0.61,0.36,1) both; }
+
+    .action-list { margin-top:7px; border-top:1px solid var(--border);
+      padding-top:5px; display:flex; flex-direction:column; gap:3px; }
+    .action-row { display:flex; align-items:baseline; gap:6px; font-size:10px;
+      font-family:var(--mono); color:var(--dim); }
+    .atype { color:var(--accent-d); }
+    .astatus { font-size:9px; }
+    .astatus.ok   { color:var(--green); }
+    .astatus.err  { color:var(--red); }
+
+    /* ── Input row ── */
+    #inputrow { display:flex; gap:6px; padding:8px 10px; background:var(--bg-2);
+      border-top:1px solid var(--border); flex-shrink:0; align-items:flex-end; }
+    #prompt { flex:1; background:var(--input-bg); color:var(--text);
+      border:1px solid var(--border); padding:6px 8px; border-radius:var(--r);
+      resize:none; height:52px; line-height:1.5; font-size:11px; }
+    #prompt::placeholder { color:var(--dim); }
+    #prompt:focus { outline:1px solid var(--dim); }
+    .btn { background:var(--bg-3); color:var(--text); border:1px solid var(--border);
+      padding:4px 12px; border-radius:9px; cursor:pointer; font-size:11px;
+      white-space:nowrap; height:25px; display:flex; align-items:center; }
+    .btn:hover { border-color:var(--dim); }
+    .btn:disabled { opacity:.4; cursor:default; pointer-events:none; }
+    .btn.primary { background:var(--accent); color:hsl(0,0%,10%);
+      border-color:var(--accent); font-weight:700; }
+    .btn.primary:hover { filter:brightness(1.1); }
+    #apply-btn { display:none; }
+
+    /* ── Settings panel ── */
+    #settings-panel { overflow-y:auto; padding:14px 16px; gap:14px; }
+
+    .s-section { display:flex; flex-direction:column; gap:8px; }
+    .s-title { font-size:10px; font-weight:700; color:var(--dim);
+      text-transform:uppercase; letter-spacing:.08em; padding-bottom:4px;
+      border-bottom:1px solid var(--border); }
+
+    .s-row { display:flex; flex-direction:column; gap:3px; }
+    .s-label { font-size:10.5px; color:var(--dim); }
+    .s-input { background:var(--input-bg); color:var(--text);
+      border:1px solid var(--border); padding:4px 7px; border-radius:var(--r);
+      font-size:11px; width:100%; font-family:var(--mono); }
+    .s-input:focus { outline:1px solid var(--dim); }
+    .s-input.pw { -webkit-text-security:disc; }
+    .s-hint { font-size:10px; color:var(--dim); }
+    .s-hint a { color:var(--accent-d); }
+
+    /* model list */
+    #model-list { display:flex; flex-direction:column; gap:4px; }
+    .model-item { display:flex; align-items:center; gap:7px; padding:5px 8px;
+      background:var(--bg-3); border:1px solid var(--border);
+      border-radius:var(--r); }
+    .model-item.active-model { border-color:var(--accent-d); }
+    .model-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .dot-anthropic { background:hsl(31,80%,55%); }
+    .dot-ollama    { background:hsl(200,60%,55%); }
+    .model-id    { font-family:var(--mono); font-size:10.5px; flex:1; color:var(--text); }
+    .model-label { font-size:10px; color:var(--dim); }
+    .model-remove { background:none; border:none; color:var(--dim); cursor:pointer;
+      font-size:12px; line-height:1; padding:0 2px; }
+    .model-remove:hover { color:var(--red); }
+    .model-set-active { background:none; border:none; color:var(--dim); cursor:pointer;
+      font-size:9px; padding:1px 5px; border-radius:4px;
+      border:1px solid var(--border); white-space:nowrap; }
+    .model-set-active:hover { color:var(--text); }
+    .model-set-active.is-active { color:var(--accent); border-color:var(--accent-d); }
+
+    /* add model row */
+    #add-model-row { display:flex; gap:5px; margin-top:3px; }
+    #new-model-id    { flex:2; }
+    #new-model-label { flex:2; }
+    #new-model-provider { flex:1; background:var(--input-bg); color:var(--text);
+      border:1px solid var(--border); padding:4px 5px; border-radius:var(--r);
+      font-size:11px; cursor:pointer; }
+    .s-save-btn { background:var(--accent); color:hsl(0,0%,10%);
+      border:none; padding:5px 14px; border-radius:9px; cursor:pointer;
+      font-size:11px; font-weight:700; margin-top:4px; align-self:flex-start; }
+    .s-save-btn:hover { filter:brightness(1.1); }
+
+    .key-show-toggle { background:none; border:none; color:var(--dim);
+      cursor:pointer; font-size:10px; padding:0 4px; }
+    .key-show-toggle:hover { color:var(--text); }
+    .key-row { display:flex; gap:4px; align-items:center; }
+    .key-row .s-input { flex:1; }
+  </style>
+</head>
+<body>
+
+<!-- Welcome screen -->
+<div id="welcome">
+  <div class="welcome-q">Q</div>
+  <div class="welcome-tagline">Hi, I'm Q — tell me what to do in your session</div>
+
+  <div class="welcome-examples" id="welcome-examples">
+    <!-- populated by JS -->
+  </div>
+
+  <div class="welcome-input-row">
+    <input id="welcome-prompt" type="text"
+      placeholder="What would you like to do?" autocomplete="off" spellcheck="false">
+    <button id="welcome-send">Go</button>
+  </div>
+</div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <span class="logo">Q</span>
+  <select id="model-select"></select>
+  <button class="tb-btn ml" id="undo-btn">↩ Undo</button>
+  <button class="tb-btn" id="clear-btn">✕ Clear</button>
+</div>
+
+<!-- Tab bar -->
+<div id="tabs">
+  <div class="tab active" data-tab="chat">Chat</div>
+  <div class="tab" data-tab="settings">⚙ Settings</div>
+</div>
+
+<!-- ── Chat panel ─────────────────────────────────────────────────────── -->
+<div id="chat-panel">
+  <div id="messages"></div>
+  <div id="inputrow">
+    <textarea id="prompt" placeholder="Tell Claude what to do… (Enter to send, Shift+Enter newline)"></textarea>
+    <button class="btn primary" id="send-btn">Send</button>
+    <button class="btn" id="apply-btn">Apply ✓</button>
+  </div>
+</div>
+
+<!-- ── Settings panel ─────────────────────────────────────────────────── -->
+<div id="settings-panel" class="hidden">
+
+  <div class="s-section">
+    <div class="s-title">Anthropic API Key</div>
+    <div class="s-row">
+      <div class="s-label">API Key</div>
+      <div class="key-row">
+        <input class="s-input pw" id="api-key-input" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+        <button class="key-show-toggle" id="key-toggle" title="Show/hide">👁</button>
+      </div>
+      <div class="s-hint">Stored in <code>storageDirectory/llm-settings.json</code> on disk.
+        Get a key at <a href="#" onclick="return false">console.anthropic.com</a>.</div>
+    </div>
+  </div>
+
+  <div class="s-section" style="margin-top:14px">
+    <div class="s-title">Local Ollama</div>
+    <div class="s-row">
+      <div class="s-label">Endpoint</div>
+      <input class="s-input" id="ollama-endpoint" placeholder="http://localhost:11434">
+    </div>
+    <div class="s-row" style="margin-top:6px">
+      <div class="s-label">Default model</div>
+      <input class="s-input" id="ollama-model" placeholder="llama3">
+    </div>
+  </div>
+
+  <div class="s-section" style="margin-top:14px">
+    <div class="s-title">Models</div>
+    <div id="model-list"></div>
+
+    <div id="add-model-row" style="margin-top:8px">
+      <input class="s-input" id="new-model-id"    placeholder="Model ID  e.g. claude-opus-4-6">
+      <input class="s-input" id="new-model-label" placeholder="Label  e.g. Opus 4.6">
+      <select id="new-model-provider">
+        <option value="anthropic">Anthropic</option>
+        <option value="ollama">Ollama</option>
+      </select>
+    </div>
+    <button class="tb-btn" id="add-model-btn" style="margin-top:5px;align-self:flex-start">+ Add model</button>
+  </div>
+
+
+
+  <button class="s-save-btn" id="settings-save-btn" style="margin-top:18px">Save settings</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// Bootstrap
+// ═══════════════════════════════════════════════════════════════════════
+const { snapshot, history, settings: initSettings, lastJsResult } =
+  JSON.parse(decodeURIComponent("__PAYLOAD__"));
+
+let turns    = [...history];
+let pending  = [];           // validated Action[]
+let cfg      = { ...initSettings };   // live copy of settings
+
+// When ambiguity is detected we stash the full action batch here.
+// On candidate selection we patch the unresolved slot and apply directly.
+let pendingAmbiguous = null;
+// { actions: Action[], ambiguousAction: Action, field: "trackName", original: string }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Host bridge
+// ═══════════════════════════════════════════════════════════════════════
+function postToHost(msg) {
+  if (window.webkit?.messageHandlers?.live)
+    window.webkit.messageHandlers.live.postMessage(msg);
+  else if (window.chrome?.webview)
+    window.chrome.webview.postMessage(msg);
+}
+function closeWithResult(payload) {
+  postToHost({ method: "close_and_send", params: [JSON.stringify(payload)] });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Model selector — built from cfg.models
+// ═══════════════════════════════════════════════════════════════════════
+function rebuildModelSelector() {
+  const sel = document.getElementById("model-select");
+  sel.innerHTML = "";
+  cfg.models.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.label;
+    if (m.id === cfg.activeModelId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById("model-select").addEventListener("change", e => {
+  cfg.activeModelId = e.target.value;
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tab switching
+// ═══════════════════════════════════════════════════════════════════════
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const which = tab.dataset.tab;
+    document.getElementById("chat-panel").classList.toggle("hidden", which !== "chat");
+    document.getElementById("settings-panel").classList.toggle("hidden", which !== "settings");
+    if (which === "settings") renderSettings();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Settings panel
+// ═══════════════════════════════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById("api-key-input").value   = cfg.anthropicApiKey   || "";
+  document.getElementById("ollama-endpoint").value  = cfg.ollamaEndpoint   || "http://localhost:11434";
+  document.getElementById("ollama-model").value     = cfg.ollamaModel      || "llama3";
+  renderModelList();
+}
+
+function renderModelList() {
+  const list = document.getElementById("model-list");
+  list.innerHTML = "";
+  cfg.models.forEach((m, i) => {
+    const row = document.createElement("div");
+    row.className = "model-item" + (m.id === cfg.activeModelId ? " active-model" : "");
+
+    const dot = document.createElement("div");
+    dot.className = "model-dot " + (m.provider === "anthropic" ? "dot-anthropic" : "dot-ollama");
+
+    const idEl = document.createElement("div");
+    idEl.className = "model-id";
+    idEl.textContent = m.id;
+
+    const lblEl = document.createElement("div");
+    lblEl.className = "model-label";
+    lblEl.textContent = m.label;
+
+    const setBtn = document.createElement("button");
+    setBtn.className = "model-set-active" + (m.id === cfg.activeModelId ? " is-active" : "");
+    setBtn.textContent = m.id === cfg.activeModelId ? "active" : "set active";
+    setBtn.onclick = () => {
+      cfg.activeModelId = m.id;
+      rebuildModelSelector();
+      renderModelList();
+    };
+
+    const rmBtn = document.createElement("button");
+    rmBtn.className = "model-remove";
+    rmBtn.textContent = "✕";
+    rmBtn.title = "Remove";
+    rmBtn.onclick = () => {
+      cfg.models.splice(i, 1);
+      if (cfg.activeModelId === m.id && cfg.models.length)
+        cfg.activeModelId = cfg.models[0].id;
+      rebuildModelSelector();
+      renderModelList();
+    };
+
+    row.append(dot, idEl, lblEl, setBtn, rmBtn);
+    list.appendChild(row);
+  });
+}
+
+// Add model
+document.getElementById("add-model-btn").addEventListener("click", () => {
+  const id       = document.getElementById("new-model-id").value.trim();
+  const label    = document.getElementById("new-model-label").value.trim() || id;
+  const provider = document.getElementById("new-model-provider").value;
+  if (!id) return;
+  if (cfg.models.some(m => m.id === id)) {
+    alert("A model with this ID already exists.");
+    return;
+  }
+  cfg.models.push({ id, label, provider });
+  document.getElementById("new-model-id").value    = "";
+  document.getElementById("new-model-label").value = "";
+  rebuildModelSelector();
+  renderModelList();
+});
+
+// API key show/hide toggle
+document.getElementById("key-toggle").addEventListener("click", () => {
+  const inp = document.getElementById("api-key-input");
+  inp.classList.toggle("pw");
+});
+
+// Save
+document.getElementById("settings-save-btn").addEventListener("click", () => {
+  cfg.anthropicApiKey = document.getElementById("api-key-input").value.trim();
+  cfg.ollamaEndpoint  = document.getElementById("ollama-endpoint").value.trim() || "http://localhost:11434";
+  cfg.ollamaModel     = document.getElementById("ollama-model").value.trim()    || "llama3";
+  rebuildModelSelector();
+  // Flash button as feedback
+  const btn = document.getElementById("settings-save-btn");
+  btn.textContent = "Saved ✓";
+  setTimeout(() => { btn.textContent = "Save settings"; }, 1500);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tool definitions  (single source of truth — API enforces this schema)
+// ═══════════════════════════════════════════════════════════════════════
+const NOTE_DESC = {
+  type:"object", required:["pitch","startTime","duration"], additionalProperties:false,
+  properties:{
+    pitch:             {type:"number",minimum:0,maximum:127},
+    startTime:         {type:"number",minimum:0},
+    duration:          {type:"number",minimum:0.0625},
+    velocity:          {type:"number",minimum:0,maximum:127},
+    muted:             {type:"boolean"},
+    probability:       {type:"number",minimum:0,maximum:1},
+    velocityDeviation: {type:"number",minimum:-127,maximum:127},
+    releaseVelocity:   {type:"number",minimum:0,maximum:127},
+  }
+};
+
+const TOOLS = [
+  { name:"set_tempo", description:"Set the song tempo in BPM.",
+    input_schema:{type:"object",required:["bpm"],additionalProperties:false,
+      properties:{bpm:{type:"number",minimum:20,maximum:999}}}},
+  { name:"mute_track", description:"Mute or unmute a track.",
+    input_schema:{type:"object",required:["trackName","muted"],additionalProperties:false,
+      properties:{trackName:{type:"string"},muted:{type:"boolean"}}}},
+  { name:"solo_track", description:"Solo or unsolo a track.",
+    input_schema:{type:"object",required:["trackName","soloed"],additionalProperties:false,
+      properties:{trackName:{type:"string"},soloed:{type:"boolean"}}}},
+  { name:"arm_track", description:"Arm or disarm a track for recording.",
+    input_schema:{type:"object",required:["trackName","armed"],additionalProperties:false,
+      properties:{trackName:{type:"string"},armed:{type:"boolean"}}}},
+  { name:"rename_track", description:"Rename a track.",
+    input_schema:{type:"object",required:["trackName","newName"],additionalProperties:false,
+      properties:{trackName:{type:"string"},newName:{type:"string"}}}},
+  { name:"rename_clip", description:"Rename a session-view clip by its 0-based slot index.",
+    input_schema:{type:"object",required:["trackName","clipIndex","newName"],additionalProperties:false,
+      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},newName:{type:"string"}}}},
+  { name:"set_clip_color", description:"Set a session clip color. color is a 24-bit RGB integer (red=16711680).",
+    input_schema:{type:"object",required:["trackName","clipIndex","color"],additionalProperties:false,
+      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},color:{type:"number"}}}},
+  { name:"set_clip_muted", description:"Mute or unmute a session-view clip.",
+    input_schema:{type:"object",required:["trackName","clipIndex","muted"],additionalProperties:false,
+      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},muted:{type:"boolean"}}}},
+  { name:"create_midi_track", description:"Create a new MIDI track.",
+    input_schema:{type:"object",additionalProperties:false,
+      properties:{name:{type:"string"}}}},
+  { name:"create_audio_track", description:"Create a new Audio track.",
+    input_schema:{type:"object",additionalProperties:false,
+      properties:{name:{type:"string"}}}},
+  { name:"delete_track", description:"Delete a track.",
+    input_schema:{type:"object",required:["trackName"],additionalProperties:false,
+      properties:{trackName:{type:"string"}}}},
+  { name:"duplicate_track", description:"Duplicate a track. Copy inserted immediately after original.",
+    input_schema:{type:"object",required:["trackName"],additionalProperties:false,
+      properties:{trackName:{type:"string"}}}},
+  { name:"create_scene", description:"Create a scene at a 0-based index.",
+    input_schema:{type:"object",required:["index"],additionalProperties:false,
+      properties:{index:{type:"number",minimum:0},name:{type:"string"}}}},
+  { name:"delete_scene", description:"Delete a scene by 0-based index.",
+    input_schema:{type:"object",required:["sceneIndex"],additionalProperties:false,
+      properties:{sceneIndex:{type:"number",minimum:0}}}},
+  { name:"create_midi_clip_slot", description:"Create a MIDI clip in a session-view slot.",
+    input_schema:{type:"object",required:["trackName","slotIndex","lengthBeats"],additionalProperties:false,
+      properties:{trackName:{type:"string"},slotIndex:{type:"number",minimum:0},lengthBeats:{type:"number",minimum:0.25}}}},
+  { name:"create_midi_clip_arr", description:"Create a MIDI clip in arrangement view.",
+    input_schema:{type:"object",required:["trackName","startBeat","lengthBeats"],additionalProperties:false,
+      properties:{trackName:{type:"string"},startBeat:{type:"number",minimum:0},lengthBeats:{type:"number",minimum:0.25}}}},
+  { name:"set_midi_notes", description:"Overwrite all notes in a session-view MIDI clip.",
+    input_schema:{type:"object",required:["trackName","clipIndex","notes"],additionalProperties:false,
+      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},
+        notes:{type:"array",items:NOTE_DESC}}}},
+  { name:"delete_clip", description:"Delete a clip from a session-view slot.",
+    input_schema:{type:"object",required:["trackName","clipIndex"],additionalProperties:false,
+      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0}}}},
+  { name:"clear_clips_range", description:"Clear clips in a beat range on a track (arrangement).",
+    input_schema:{type:"object",required:["trackName","startBeat","endBeat"],additionalProperties:false,
+      properties:{trackName:{type:"string"},startBeat:{type:"number"},endBeat:{type:"number"}}}},
+  { name:"rename_clip_arr", description:"Rename an arrangement clip by 0-based index.",
+    input_schema:{type:"object",required:["trackName","arrClipIndex","newName"],additionalProperties:false,
+      properties:{trackName:{type:"string"},arrClipIndex:{type:"number",minimum:0},newName:{type:"string"}}}},
+  { name:"insert_device", description:"Insert a NATIVE Ableton Live device into a track's device chain.",
+    input_schema:{type:"object",required:["trackName","deviceName","index"],additionalProperties:false,
+      properties:{trackName:{type:"string"},
+        deviceName:{type:"string",description:"Native Live device only, e.g. 'Reverb', 'Compressor', 'Gate'"},
+        index:{type:"number",minimum:0}}}},
+  { name:"delete_device", description:"Delete a device from a track.",
+    input_schema:{type:"object",required:["trackName","deviceName"],additionalProperties:false,
+      properties:{trackName:{type:"string"},deviceName:{type:"string"}}}},
+  { name:"duplicate_device", description:"Duplicate a device on a track.",
+    input_schema:{type:"object",required:["trackName","deviceName"],additionalProperties:false,
+      properties:{trackName:{type:"string"},deviceName:{type:"string"}}}},
+  { name:"set_device_param", description:"Set a device parameter by name.",
+    input_schema:{type:"object",required:["trackName","deviceName","paramName","value"],additionalProperties:false,
+      properties:{trackName:{type:"string"},deviceName:{type:"string"},
+        paramName:{type:"string"},value:{type:"number"}}}},
+  { name:"create_cue_point", description:"Create a cue point at a beat position.",
+    input_schema:{type:"object",required:["timeBeat"],additionalProperties:false,
+      properties:{timeBeat:{type:"number",minimum:0},name:{type:"string"}}}},
+  { name:"delete_cue_point", description:"Delete the cue point at a beat position.",
+    input_schema:{type:"object",required:["timeBeat"],additionalProperties:false,
+      properties:{timeBeat:{type:"number"}}}},
+
+  // ── Dynamic JS execution ──────────────────────────────────────────────
+  { name:"execute_js",
+    description:`Write and run arbitrary JavaScript against the Live SDK when no static tool covers the operation.
+The code runs as an async function body inside the extension host (Node.js) with these variables in scope:
+  - song   — the Song object (song.tracks, song.tempo, song.scenes, etc.)
+  - api    — the full ExtensionContext (api.withinTransaction, api.application, etc.)
+  - sdk    — all SDK classes: sdk.MidiTrack, sdk.AudioClip, sdk.WarpMode, sdk.MidiClip, etc.
+  - log()  — write strings back to the result; log("done", count) is returned to you next turn
+
+The entire execution runs inside withinTransaction() — one undo step in Live.
+Return a value if you want it fed back to you: return { moved: count }
+
+Example — pack gaps on all MIDI tracks:
+  const results = [];
+  for (const track of song.tracks) {
+    if (!(track instanceof sdk.MidiTrack)) continue;
+    const clips = [...track.arrangementClips].sort((a,b) => a.startTime - b.startTime);
+    if (clips.length < 2) continue;
+    const snaps = clips.map(c => ({ name:c.name, color:c.color, muted:c.muted,
+      looping:c.looping, loopStart:c.loopStart, loopEnd:c.loopEnd,
+      startMarker:c.startMarker, endMarker:c.endMarker,
+      duration:c.duration, notes:c.notes }));
+    await track.clearClipsInRange(clips[0].startTime, clips[clips.length-1].endTime);
+    let head = snaps[0].startTime;
+    for (const s of snaps) {
+      const nc = await track.createMidiClip(head, s.duration);
+      nc.name=s.name; nc.color=s.color; nc.muted=s.muted;
+      nc.notes=s.notes; head += s.duration;
+    }
+    results.push(track.name);
+  }
+  log("Consolidated:", results.join(", "));
+  return results;`,
+    input_schema:{type:"object",required:["code","description"],additionalProperties:false,
+      properties:{
+        code:{type:"string", description:"Async JS function body. Has song, api, sdk, log in scope."},
+        description:{type:"string", description:"One sentence — what this code does. Shown to the user."},
+      }}},
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// SDK limitations injected into the system prompt
+// ═══════════════════════════════════════════════════════════════════════
+const CANNOT_DO = [
+  "Create or modify group/folder tracks (no createGroupTrack in SDK v1.0.0)",
+  "Move tracks into groups",
+  "Set track header color (clips only)",
+  "Load third-party VST/AU/AAX plugins — only native Live devices via insertDevice()",
+  "Create return tracks (returnTracks is read-only)",
+  "Configure send routing targets (send level is readable but routing target is not writable)",
+  "Control transport: play, stop, record, loop",
+  "Launch clips in session view",
+  "Load Live presets or samples by name",
+  "Move individual clips to arbitrary positions directly (use execute_js to implement gap-packing or repositioning logic)",
+  "Restore audio clip warp markers after moving (warpMarkers is read-only in SDK v1.0.0)",
+];
+
+const VALID_NAMES  = new Set(snapshot.tracks.map(t => t.name));
+const VALID_TOOLS  = new Set(TOOLS.map(t => t.name));
+
+// ═══════════════════════════════════════════════════════════════════════
+// System prompt
+// ═══════════════════════════════════════════════════════════════════════
+function buildSystemPrompt() {
+  const selCtx = snapshot.selectionCtx
+    ? `\nArrangement selection: beats ${snapshot.selectionCtx.startBeat}–${snapshot.selectionCtx.endBeat}` +
+      (snapshot.selectionCtx.selectedTrackNames.length
+        ? `, tracks: ${snapshot.selectionCtx.selectedTrackNames.join(", ")}`
+        : "")
+    : "";
+
+  return `You are an AI assistant controlling Ableton Live via the Ableton Extensions SDK v1.0.0.
+Use the provided tools to fulfil the user's request. Call multiple tools in one response where needed.
+${selCtx}
+
+## Current session state
+\`\`\`json
+${JSON.stringify(snapshot, null, 2)}
+\`\`\`
+${lastJsResult ? `
+## Last execute_js result
+Description: ${lastJsResult.description}
+Status: ${lastJsResult.ok ? "success" : "error: " + lastJsResult.error}
+${lastJsResult.logs.length ? "Logs:\n" + lastJsResult.logs.map(l => "  " + l).join("\n") : ""}
+${lastJsResult.result !== null && lastJsResult.result !== undefined ? "Return value: " + JSON.stringify(lastJsResult.result) : ""}
+` : ""}
+## Hard constraints (SDK limitations — do NOT attempt workarounds)
+${CANNOT_DO.map((c,i) => `${i+1}. ${c}`).join("\n")}
+
+## Rules
+
+### Target resolution (most important)
+- Infer the intended track, clip, or device from the user's natural language and the session state above.
+- "the bass" → find the track whose name most closely matches "bass" (case-insensitive, partial match).
+- "first clip on drums" → track matching "drums", clipSlots[0].
+- "the kick" → track matching "kick".
+- "last track" → snapshot.tracks[snapshot.tracks.length - 1].
+- Once you have resolved the target, use its EXACT name from the session state in the tool call.
+- If two or more tracks are plausible matches (e.g. "bass" matches both "Bass" and "Sub Bass"),
+  do NOT guess. Instead reply ONLY with this JSON and nothing else:
+  {"ambiguous":true,"prompt":"<what the user said>","candidates":["<name1>","<name2>"]}
+  The app will ask the user to clarify and retry.
+
+### Other rules
+- clipIndex is 0-based, refers to clipSlots[].
+- arrClipIndex is 0-based, refers to arrangementClips[].
+- set_clip_color: 24-bit RGB integer (red=16711680, blue=255, green=65280, orange=16744448).
+- All tool calls in one response are applied as a single undo step.
+- If something is entirely unsupported by the SDK, respond with ONLY this JSON and nothing else:
+  {"sdk_limitation":true,"feature":"<short name>","reason":"<one sentence>","user_request":"<verbatim prompt>"}
+  Do NOT call any tools alongside this. Do NOT add prose before or after it.
+- If partially unsupported, execute the supported parts with tools, then append the limitation JSON on its own line.
+- Never invent tools or workarounds for items listed in Hard Constraints.
+
+### execute_js — write new tools at runtime
+When a user request cannot be satisfied by the static tools above, use execute_js.
+Write a JS async function body. It has in scope:
+  song, api, sdk (all SDK classes), log() (captured output returned to you)
+The code runs in the extension host inside withinTransaction() — one undo step.
+
+Use execute_js when:
+- The operation requires looping over tracks/clips programmatically
+- You need to read state and conditionally mutate (e.g. "pack gaps", "find clips longer than 4 bars")
+- No static tool covers the exact operation
+
+Do NOT use execute_js for things covered by static tools — use the tool directly.`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Resolver — fuzzy-matches LLM output to exact session names
+// Runs BEFORE validateAction so the LLM never needs exact strings.
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Normalise a string for fuzzy comparison */
+function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+
+/**
+ * Score how well `candidate` matches `query`.
+ * Returns 0–1: 1 = exact match, 0 = no overlap.
+ */
+function matchScore(query, candidate) {
+  const q = norm(query);
+  const c = norm(candidate);
+  if (!q || !c) return 0;
+  if (c === q)           return 1;       // exact
+  if (c.startsWith(q))   return 0.9;    // prefix
+  if (c.includes(q))     return 0.75;   // substring
+  if (q.includes(c))     return 0.6;    // reverse substring
+  // character overlap score
+  const qSet = new Set(q);
+  const cSet = new Set(c);
+  const overlap = [...qSet].filter(ch => cSet.has(ch)).length;
+  return overlap / Math.max(qSet.size, cSet.size) * 0.5;
+}
+
+const AMBIGUITY_THRESHOLD = 0.15;  // max gap between top-2 scores to call ambiguous
+const MIN_SCORE = 0.3;              // minimum score to accept any match
+
+/**
+ * Given a possibly-fuzzy trackName from the LLM, resolve it to the exact
+ * name in the session snapshot. Returns:
+ *   { resolved: "Exact Name" }           — unambiguous match
+ *   { ambiguous: ["Name A", "Name B"] }  — too close to call
+ *   { unresolved: true }                  — no match above threshold
+ */
+function resolveTrackName(fuzzy) {
+  if (VALID_NAMES.has(fuzzy)) return { resolved: fuzzy };  // already exact
+
+  const scored = snapshot.tracks
+    .map(t => ({ name: t.name, score: matchScore(fuzzy, t.name) }))
+    .filter(x => x.score >= MIN_SCORE)
+    .sort((a, b) => b.score - a.score);
+
+  if (!scored.length) return { unresolved: true };
+
+  const best = scored[0];
+  const second = scored[1];
+
+  // Ambiguous if two candidates are within threshold of each other
+  if (second && (best.score - second.score) < AMBIGUITY_THRESHOLD) {
+    return { ambiguous: scored.slice(0, 4).map(x => x.name) };
+  }
+
+  return { resolved: best.name };
+}
+
+/**
+ * Resolve fuzzy references in an action in-place.
+ * Returns null if resolved OK, or an error string if unresolvable/ambiguous.
+ */
+function resolveAction(action) {
+  if (!("trackName" in action)) return null;  // no track reference to resolve
+  if (VALID_NAMES.has(action.trackName)) return null;  // already exact
+
+  const result = resolveTrackName(action.trackName);
+
+  if (result.resolved) {
+    action._resolvedFrom = action.trackName;  // keep original for display
+    action.trackName = result.resolved;
+    return null;
+  }
+  if (result.ambiguous) {
+    // Include the action reference so the bubble can patch it directly on click
+    return { ambiguous: true, candidates: result.ambiguous, original: action.trackName, ambiguousAction: action };
+  }
+  return `Track "${action.trackName}" could not be matched to any track in the session`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Validate (runs after resolver — trackName should be exact by this point)
+// ═══════════════════════════════════════════════════════════════════════
+function validateAction(action) {
+  if (!VALID_TOOLS.has(action.type))
+    return `Unknown action type "${action.type}"`;
+  if ("trackName" in action && !VALID_NAMES.has(action.trackName))
+    return `Track "${action.trackName}" not found in session`;
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Parse ambiguity response from LLM
+// ═══════════════════════════════════════════════════════════════════════
+function parseAmbiguity(text) {
+  const match = text.match(/\{[^{}]*"ambiguous"\s*:\s*true[^{}]*\}/s);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    if (parsed.ambiguous === true && Array.isArray(parsed.candidates)) return parsed;
+  } catch {}
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Rendering
+// ═══════════════════════════════════════════════════════════════════════
+function addThinkingBubble() {
+  const box = document.getElementById("messages");
+  const d   = document.createElement("div");
+  d.className = "bubble thinking";
+  d.innerHTML = '<span class="thinking-dots"><span>•</span><span>•</span><span>•</span></span>';
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+function addBubble(role, text, annotated) {
+  const box = document.getElementById("messages");
+  const d   = document.createElement("div");
+  d.className = "bubble " + role;
+  d.textContent = text;
+
+  if (annotated?.length) {
+    const list = document.createElement("div");
+    list.className = "action-list";
+    annotated.forEach((a) => {
+      const { action, error } = a;
+
+      // execute_js gets its own card instead of a plain action row
+      if (action.type === "execute_js") {
+        const card = document.createElement("div");
+        card.className = "js-card";
+
+        const lbl = document.createElement("div");
+        lbl.className = "js-card-label";
+        lbl.textContent = "⚡ JS Tool" + (error ? " — failed" : "");
+
+        const desc = document.createElement("div");
+        desc.className = "js-card-desc";
+        desc.textContent = action.description || "(no description)";
+
+        const toggle = document.createElement("button");
+        toggle.className = "js-code-toggle";
+        toggle.textContent = "show code";
+        const pre = document.createElement("pre");
+        pre.className = "js-code-block";
+        pre.textContent = action.code || "";
+        toggle.addEventListener("click", () => {
+          const open = pre.classList.toggle("open");
+          toggle.textContent = open ? "hide code" : "show code";
+        });
+
+        const stEl = document.createElement("div");
+        stEl.className = "astatus " + (error ? "err" : "ok");
+        stEl.style.cssText = "font-size:9px;margin-top:4px;";
+        stEl.textContent = error ? `✕ ${error}` : "✓ queued — runs on Apply";
+
+        card.append(lbl, desc, toggle, pre, stEl);
+        list.appendChild(card);
+        return;
+      }
+
+      // Standard action row
+      const row = document.createElement("div");
+      row.className = "action-row";
+      const typeEl = document.createElement("span");
+      typeEl.className = "atype";
+      typeEl.textContent = action.type;
+      const hintEl = document.createElement("span");
+      const hintVal = action.trackName || action.bpm || "";
+      const resolvedHint = a.resolvedFrom ? ` ← "${a.resolvedFrom}"` : "";
+      hintEl.textContent = hintVal ? `(${hintVal}${resolvedHint})` : "";
+      if (a.resolvedFrom) hintEl.style.color = "var(--accent-d)";
+      const stEl = document.createElement("span");
+      stEl.className = "astatus " + (error ? "err" : "ok");
+      stEl.textContent = error ? `✕ ${error}` : "✓";
+      row.append(typeEl, hintEl, stEl);
+      list.appendChild(row);
+    });
+    d.appendChild(list);
+  }
+
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+/**
+ * addAmbiguityBubble
+ *
+ * Shows the ambiguous match card. Two modes:
+ *
+ * A) stashedActions supplied — client-side ambiguity. Clicking a candidate
+ *    patches the stashed action in-place and applies immediately — no new
+ *    LLM call needed.
+ *
+ * B) no stashedActions — LLM-reported ambiguity. Clicking a candidate
+ *    re-sends the original prompt with the chosen name appended so the
+ *    LLM can re-resolve with the clarification.
+ */
+function addAmbiguityBubble(question, candidates, stashedActions, ambiguousAction, originalIntent) {
+  const box = document.getElementById("messages");
+  const d   = document.createElement("div");
+  d.className = "bubble ambiguity";
+
+  const lbl = document.createElement("div");
+  lbl.className = "limitation-label";
+  lbl.style.color = "hsl(200,70%,60%)";
+  lbl.textContent = "❓ Multiple matches";
+
+  const txt = document.createElement("div");
+  txt.className = "limitation-text";
+  txt.textContent = question;
+
+  // If we have the actual action, show a preview of what will happen
+  if (ambiguousAction) {
+    const preview = document.createElement("div");
+    preview.className = "ambiguity-action-preview";
+    const params = Object.entries(ambiguousAction)
+      .filter(([k]) => k !== "trackName" && !k.startsWith("_"))
+      .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+      .join(", ");
+    preview.textContent = `→ ${ambiguousAction.type}(trackName: ?, ${params})`;
+    d.appendChild(preview);
+  }
+
+  const btns = document.createElement("div");
+  btns.className = "ambiguity-candidates";
+
+  candidates.forEach(name => {
+    const b = document.createElement("button");
+    b.className = "candidate-btn";
+    b.textContent = name;
+
+    b.addEventListener("click", () => {
+      // Dim all buttons, highlight chosen
+      btns.querySelectorAll(".candidate-btn").forEach(el => el.classList.remove("chosen"));
+      b.classList.add("chosen");
+      b.textContent = "✓ " + name;
+
+      if (stashedActions && ambiguousAction) {
+        // Mode A: patch in-place and apply without new LLM call
+        ambiguousAction.trackName = name;
+        ambiguousAction._resolvedFrom = originalIntent;
+        pending = [...pending, ...stashedActions.filter(a => !validateAction(a))];
+
+        // Show the resolved action list inline
+        const resolvedNote = document.createElement("div");
+        resolvedNote.style.cssText = "font-size:10px;color:var(--dim);margin-top:6px;font-family:var(--mono);";
+        resolvedNote.textContent = "Resolved → " + name + ". Click Apply ✓ to execute.";
+        d.appendChild(resolvedNote);
+
+        document.getElementById("apply-btn").style.display = "";
+        const applyBtn = document.getElementById("apply-btn");
+        applyBtn.style.animation = "none";
+        applyBtn.offsetHeight;
+        applyBtn.style.animation = "";
+      } else {
+        // Mode B: re-send with clarification (LLM-reported ambiguity)
+        const clarification = (originalIntent ? originalIntent + " — use track: " : "Use track: ") + name;
+        document.getElementById("prompt").value = clarification;
+        void send();
+      }
+    });
+
+    btns.appendChild(b);
+  });
+
+  d.append(lbl, txt, btns);
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+function addLimitationBubble(limitation) {
+  const box = document.getElementById("messages");
+  const d   = document.createElement("div");
+  d.className = "bubble limitation";
+
+  const lbl = document.createElement("div");
+  lbl.className = "limitation-label";
+  lbl.textContent = "⚠️ SDK Limitation";
+
+  const txt = document.createElement("div");
+  txt.className = "limitation-text";
+  txt.textContent = limitation.reason;
+
+  const btn = document.createElement("button");
+  btn.className = "request-feature-btn";
+  btn.textContent = "↗ Request Feature";
+  btn.title = `Feature: ${limitation.feature}`;
+
+  btn.addEventListener("click", async () => {
+    if (!__MIXPANEL_TOKEN__) {
+      // Token not baked in at build time — capture silently disabled
+      btn.textContent = "Unavailable";
+      btn.disabled = true;
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    await captureFeatureRequest(limitation);
+    btn.textContent = "✓ Sent";
+    btn.classList.add("sent");
+  });
+
+  d.append(lbl, txt, btn);
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+function renderHistory() {
+  // Show result banner if a JS tool ran last session
+  if (lastJsResult) {
+    const box = document.getElementById("messages");
+    const banner = document.createElement("div");
+    banner.className = "js-result-banner" + (lastJsResult.ok ? "" : " err");
+    const dot = document.createElement("div");
+    dot.className = "js-result-dot";
+    const body = document.createElement("div");
+    body.className = "js-result-body";
+    const lbl = document.createElement("div");
+    lbl.className = "js-result-label";
+    lbl.textContent = lastJsResult.ok ? "⚡ JS Tool ran" : "⚡ JS Tool failed";
+    const desc = document.createElement("div");
+    desc.className = "js-result-desc";
+    desc.textContent = lastJsResult.description || "";
+    body.append(lbl, desc);
+    if (lastJsResult.logs?.length) {
+      const logs = document.createElement("div");
+      logs.className = "js-result-logs";
+      logs.textContent = lastJsResult.logs.join("
+");
+      body.appendChild(logs);
+    }
+    if (!lastJsResult.ok && lastJsResult.error) {
+      const err = document.createElement("div");
+      err.style.cssText = "font-size:10px;color:hsl(0,60%,65%);margin-top:3px;font-family:var(--mono);";
+      err.textContent = lastJsResult.error;
+      body.appendChild(err);
+    }
+    banner.append(dot, body);
+    box.appendChild(banner);
+  }
+  turns.forEach(t => addBubble(t.role, t.content));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Mixpanel feature request capture
+// Uses the Mixpanel HTTP Tracking API directly — no SDK needed.
+// Project token is write-only (cannot read data) so it’s safe to store client-side.
+// ═══════════════════════════════════════════════════════════════════════
+async function captureFeatureRequest(limitation) {
+  const token = __MIXPANEL_TOKEN__;
+  if (!token) return;
+
+  // Stable anonymous ID per install — persists in settings file across sessions
+  if (!cfg.mixpanelDistinctId) {
+    cfg.mixpanelDistinctId = "live-ext-" + Math.random().toString(36).slice(2, 10);
+  }
+
+  // Mixpanel HTTP Tracking API: POST to /track with base64-encoded JSON event
+  const event = {
+    event: "sdk_limitation_feature_request",
+    properties: {
+      token,
+      distinct_id: cfg.mixpanelDistinctId,
+      time:        Math.floor(Date.now() / 1000),  // Unix timestamp (seconds)
+
+      // What was requested
+      feature:      limitation.feature,
+      reason:       limitation.reason,
+      user_request: limitation.user_request,
+
+      // Session context — lets you see which features matter for which project sizes
+      track_count:  snapshot.tracks.length,
+      tempo:        snapshot.tempo,
+      model_used:   cfg.activeModelId,
+      sdk_version:  "1.0.0",
+      ext_version:  "0.1.0",
+    }
+  };
+
+  // Mixpanel expects: data=<base64 JSON> in the POST body
+  const encoded = btoa(JSON.stringify(event));
+
+  try {
+    await fetch("https://api.mixpanel.com/track", {
+      method:  "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    "data=" + encodeURIComponent(encoded),
+    });
+  } catch (e) {
+    console.warn("[Q] Mixpanel capture failed:", e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LLM fetch — uses native tool_use for Anthropic; JSON prompt for Ollama
+// ═══════════════════════════════════════════════════════════════════════
+async function fetchLLM(userMessage) {
+  const activeModel = cfg.models.find(m => m.id === cfg.activeModelId) ?? cfg.models[0];
+  const messages = [...turns, { role:"user", content:userMessage }];
+
+  // ── Ollama ──────────────────────────────────────────────────────────
+  if (activeModel?.provider === "ollama") {
+    const endpoint = (cfg.ollamaEndpoint || "http://localhost:11434").replace(/\/$/, "");
+    const model    = cfg.ollamaModel || "llama3";
+    const resp = await fetch(`${endpoint}/api/chat`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model, stream:false,
+        system: buildSystemPrompt() +
+          `\n\nReturn ONLY valid JSON: {"text":"...","actions":[...]}\n` +
+          `actions is an array of objects with "type" matching a tool name plus its required fields.\n` +
+          `Emit [] for actions if no changes needed.`,
+        messages: messages.map(t => ({ role:t.role, content:t.content })),
+      })
+    });
+    if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text()}`);
+    const data  = await resp.json();
+    const raw   = data.message.content.replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(raw);
+    return { text: parsed.text ?? raw, toolCalls: parsed.actions ?? [] };
+  }
+
+  // ── Anthropic API ───────────────────────────────────────────────────
+  const apiKey = cfg.anthropicApiKey;
+  if (!apiKey) throw new Error("No Anthropic API key set. Open ⚙ Settings to add one.");
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "Content-Type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-calls": "true",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      model:       activeModel?.id ?? "claude-sonnet-4-5",
+      max_tokens:  4096,
+      system:      buildSystemPrompt(),
+      tools:       TOOLS,
+      tool_choice: { type:"auto" },
+      messages:    messages.map(t => ({ role:t.role, content:t.content })),
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message ?? `API error ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  let text = "";
+  const toolCalls = [];
+
+  for (const block of data.content) {
+    if (block.type === "text")     text += block.text;
+    if (block.type === "tool_use") toolCalls.push({ type:block.name, ...block.input });
+  }
+
+  // Detect structured responses — limitation or ambiguity
+  const limitation = parseLimitation(text);
+  const ambiguity  = !limitation ? parseAmbiguity(text) : null;
+  return {
+    text: limitation ? limitation.reason : ambiguity ? null : text.trim(),
+    toolCalls,
+    limitation,
+    ambiguity,
+  };
+}
+
+function parseLimitation(text) {
+  // Model returns either a bare JSON object or one appended after tool prose
+  const match = text.match(/\{[^{}]*"sdk_limitation"\s*:\s*true[^{}]*\}/s);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    if (parsed.sdk_limitation) return parsed;
+  } catch {}
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Send
+// ═══════════════════════════════════════════════════════════════════════
+async function send() {
+  const input  = document.getElementById("prompt");
+  const userMsg = input.value.trim();
+  if (!userMsg) return;
+  input.value = "";
+
+  document.getElementById("send-btn").disabled = true;
+  addBubble("user", userMsg);
+  turns.push({ role:"user", content:userMsg });
+
+  const thinking = addThinkingBubble();
+  let result;
+  try {
+    result = await fetchLLM(userMsg);
+  } catch(e) {
+    thinking.remove();
+    turns.pop();
+    addBubble("error", "Error: " + e.message);
+    document.getElementById("send-btn").disabled = false;
+    return;
+  }
+  thinking.remove();
+
+  const { text, toolCalls, limitation, ambiguity } = result;
+
+  // ── Pure SDK limitation — no tools called ──────────────────────────
+  if (limitation && !toolCalls.length) {
+    turns.push({ role:"assistant", content: `[SDK Limitation] ${limitation.feature}: ${limitation.reason}` });
+    addLimitationBubble(limitation);
+    document.getElementById("send-btn").disabled = false;
+    return;
+  }
+
+  // ── Ambiguity — LLM couldn't pick one track (Mode B) ───────────────
+  if (ambiguity) {
+    const clarifyText = `I found multiple tracks that could match "${ambiguity.prompt || "your request"}": ${ambiguity.candidates.join(", ")}. Which one did you mean?`;
+    turns.push({ role:"assistant", content: clarifyText });
+    // No stashed actions — re-send with clarification
+    addAmbiguityBubble(clarifyText, ambiguity.candidates, null, null, ambiguity.prompt || userMsg);
+    document.getElementById("send-btn").disabled = false;
+    return;
+  }
+
+  // ── Run resolver on every tool call before validation ─────────────
+  // Mutates action.trackName in-place to the exact session name.
+  const resolveErrors = [];
+  const clientAmbiguities = [];
+
+  for (const action of toolCalls) {
+    const result = resolveAction(action);
+    if (!result) continue;
+    if (typeof result === "string") {
+      resolveErrors.push({ action, error: result });
+    } else if (result.ambiguous) {
+      clientAmbiguities.push(result);
+    }
+  }
+
+  // If any client-side ambiguity (two tracks score too close), ask user
+  // Mode A: stash the full toolCalls batch — on candidate click we patch
+  // just the ambiguous trackName and apply without a new LLM call.
+  if (clientAmbiguities.length) {
+    const first = clientAmbiguities[0];
+    const question = `Which track did you mean to ${first.action?.type?.replace(/_/g," ") ?? "target"}?`;
+    turns.push({ role:"assistant", content: question + " — " + first.candidates.join(", ") });
+    pendingAmbiguous = { actions: toolCalls, ambiguousAction: first.ambiguousAction };
+    addAmbiguityBubble(
+      question,
+      first.candidates,
+      toolCalls,           // stashedActions
+      first.ambiguousAction, // the action object to patch
+      first.original       // original fuzzy string
+    );
+    document.getElementById("send-btn").disabled = false;
+    return;
+  }
+
+  // ── Annotate remaining actions with validation errors ─────────────
+  const annotated = toolCalls.map(action => {
+    const resolveErr = resolveErrors.find(e => e.action === action);
+    return {
+      action,
+      error: resolveErr ? resolveErr.error : validateAction(action),
+      resolvedFrom: action._resolvedFrom ?? null,
+    };
+  });
+  const valid = annotated.filter(a => !a.error).map(a => a.action);
+
+  const display = text || (toolCalls.length
+    ? `Applying ${toolCalls.length} action${toolCalls.length>1?"s":""}…`
+    : "(no response)");
+
+  turns.push({ role:"assistant", content:display });
+  pending = [...pending, ...valid];
+
+  if (display) addBubble("assistant", display, annotated);
+  if (limitation) addLimitationBubble(limitation);
+
+  if (pending.length) {
+    const applyBtn = document.getElementById("apply-btn");
+    applyBtn.style.display = "";
+    // Re-trigger pop-in animation each time new actions are added
+    applyBtn.style.animation = "none";
+    applyBtn.offsetHeight;   // force reflow
+    applyBtn.style.animation = "";
+  }
+  document.getElementById("send-btn").disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Button handlers
+// ═══════════════════════════════════════════════════════════════════════
+document.getElementById("send-btn").addEventListener("click", () => { void send(); });
+document.getElementById("prompt").addEventListener("keydown", e => {
+  if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+});
+document.getElementById("apply-btn").addEventListener("click", () => {
+  closeWithResult({ actions:pending, history:turns, model:cfg.activeModelId, settings:cfg });
+});
+document.getElementById("undo-btn").addEventListener("click", () => {
+  closeWithResult({ actions:[], history:turns, model:cfg.activeModelId, settings:cfg, undo:true });
+});
+document.getElementById("clear-btn").addEventListener("click", () => {
+  turns=[]; pending=[];
+  document.getElementById("messages").innerHTML="";
+  document.getElementById("apply-btn").style.display="none";
+});
+document.addEventListener("keydown", e => {
+  if (e.key==="Escape")
+    closeWithResult({ actions:[], history:turns, model:cfg.activeModelId, settings:cfg });
+});
+
+═══════════════════════════════════════════════════════════════════════
+// Welcome screen
+// ═══════════════════════════════════════════════════════════════════════
+const EXAMPLES = [
+  "“mute the kick and solo the bass”",
+  "“set tempo to 128 and rename this track Drums”",
+  "“add a compressor and reverb to vocals”",
+  "“pack all clips on the bass track”",
+  "“make all MIDI tracks orange”",
+  "“rename all tracks to lowercase”",
+  "“delete clips shorter than 1 bar”",
+  "“create 4 new scenes”",
+  "“sololo the low end”",
+  "“add a cue point at bar 9 called Drop”",
+  "“duplicate the drum track”",
+  "“set the reverb decay on vocals to 0.8”",
+];
+
+function initWelcome() {
+  const welcome = document.getElementById("welcome");
+  const exBox   = document.getElementById("welcome-examples");
+  const wPrompt = document.getElementById("welcome-prompt");
+  const wSend   = document.getElementById("welcome-send");
+
+  // If there’s existing history, skip welcome immediately
+  if (turns.length > 0) {
+    welcome.classList.add("gone");
+    return;
+  }
+
+  // Build cycling example elements
+  EXAMPLES.forEach((ex, i) => {
+    const el = document.createElement("div");
+    el.className = "welcome-example" + (i === 0 ? " active" : "");
+    el.textContent = ex;
+    exBox.appendChild(el);
+  });
+
+  // Cycle examples with crossfade
+  let exIdx = 0;
+  const cycleExamples = () => {
+    const els = exBox.querySelectorAll(".welcome-example");
+    els[exIdx].classList.remove("active");
+    exIdx = (exIdx + 1) % els.length;
+    els[exIdx].classList.add("active");
+  };
+  const exTimer = setInterval(cycleExamples, 2400);
+
+  // Dismiss welcome — fade out then hide, move prompt text to main input
+  function dismissWelcome(initialPrompt) {
+    clearInterval(exTimer);
+    welcome.classList.add("fade-out");
+    welcome.addEventListener("transitionend", () => {
+      welcome.classList.add("gone");
+    }, { once: true });
+    if (initialPrompt) {
+      // Pre-fill the main prompt and send
+      document.getElementById("prompt").value = initialPrompt;
+      void send();
+    }
+  }
+
+  // Go button
+  wSend.addEventListener("click", () => {
+    const val = wPrompt.value.trim();
+    dismissWelcome(val || null);
+    if (!val) document.getElementById("prompt").focus();
+  });
+
+  // Enter on welcome input
+  wPrompt.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = wPrompt.value.trim();
+      dismissWelcome(val || null);
+      if (!val) document.getElementById("prompt").focus();
+    }
+  });
+
+  // Clicking anywhere on the welcome screen (outside input) dismisses it
+  welcome.addEventListener("click", e => {
+    if (e.target === welcome || e.target.classList.contains("welcome-tagline") || e.target.classList.contains("welcome-q")) {
+      dismissWelcome(null);
+      document.getElementById("prompt").focus();
+    }
+  });
+
+  // Autofocus
+  setTimeout(() => wPrompt.focus(), 120);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════════════
+rebuildModelSelector();
+renderHistory();
+initWelcome();
+</script>
+</body>
+</html>
