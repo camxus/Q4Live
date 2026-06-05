@@ -9,9 +9,9 @@ Built on the Ableton Extensions SDK v1.0.0-beta.0.
 
 ### 1. Prerequisites
 
-- Node.js ≥ 22.11
-- Ableton Live with the Extensions SDK beta
-- An Anthropic API key (for Claude) **or** [Ollama](https://ollama.ai) running locally
+* Node.js ≥ 22.11
+* Ableton Live with the Extensions SDK beta
+* An Anthropic API key (for Claude) **or** [Ollama](https://ollama.ai) running locally
 
 ### 2. Install
 
@@ -24,6 +24,7 @@ npm install
 ### 3. Add your API key
 
 The chat UI calls the Anthropic API directly from the modal's WebView.
+
 Set your key in the HTML before building, or serve it via a local proxy.
 
 In `src/ui/chat.html`, find the `fetch` call to `api.anthropic.com` and add:
@@ -32,15 +33,33 @@ In `src/ui/chat.html`, find the `fetch` call to `api.anthropic.com` and add:
 "x-api-key": "YOUR_KEY_HERE",
 ```
 
-> For production use, proxy requests through a local server instead of
-> embedding keys in HTML.
+> For production use, proxy requests through a local server instead of embedding API keys in HTML.
 
-### 4. Build and run
+### 4. Build
 
 ```bash
-npm run build        # compile + bundle
-npm run start        # build + launch in Live via extensions-cli
+npm run build
 ```
+
+Compiles TypeScript and bundles the extension using esbuild.
+
+### 5. Run in Ableton Live
+
+```bash
+npm run start
+```
+
+Builds the project and launches it through `extensions-cli`.
+
+### 6. Package as an `.ablx` Extension
+
+To create a distributable Ableton extension package:
+
+```bash
+npm run package
+```
+
+The generated `.ablx` file can be installed in Ableton Live through the Extensions Manager or distributed to other users running the Ableton Extensions SDK.
 
 ---
 
@@ -51,20 +70,36 @@ npm run start        # build + launch in Live via extensions-cli
 3. Claude replies with an explanation and proposes actions
 4. Click **Apply ✓** to execute everything as one undo step
 
-**Selection context:** Right-click while an arrangement region is selected to give Claude
-time-range and track context automatically.
+### Selection Context
 
-**Undo turn:** Click ↩ in the top bar to trim the last exchange from the journal.
-Use Live's own **Ctrl+Z / Cmd+Z** to undo the changes in the session.
+Right-click while an arrangement region is selected to automatically provide:
 
-**Model selector:** Switch between Claude Sonnet, Opus, or a local Ollama model
-in the top bar.
+* Selected tracks
+* Time range
+* Arrangement context
+
+This allows the model to make more targeted edits.
+
+### Undo
+
+* Click **↩** in the chat header to remove the latest conversation turn
+* Use **Cmd+Z / Ctrl+Z** in Ableton Live to undo all applied actions
+
+### Model Selection
+
+Switch between:
+
+* Claude Sonnet
+* Claude Opus
+* Local Ollama models
+
+using the selector in the top toolbar.
 
 ---
 
-## Project structure
+## Project Structure
 
-```
+```text
 ableton-llm-controller/
 ├── manifest.json           Ableton extension manifest
 ├── package.json
@@ -72,7 +107,7 @@ ableton-llm-controller/
 ├── build.ts                esbuild bundle script
 └── src/
     ├── extension.ts        activate() — registers commands, opens dialog
-    ├── snapshot.ts         Serialises Song state → system prompt JSON
+    ├── snapshot.ts         Serializes Song state → system prompt JSON
     ├── executor.ts         Dispatches Action[] → SDK calls
     ├── session.ts          Persists conversation history to storageDirectory
     ├── schema.ts           Action union type + DialogResult
@@ -82,24 +117,53 @@ ableton-llm-controller/
 
 ---
 
-## Available actions
+## Available Actions
 
-| Action | What it does |
-|--------|-------------|
-| `set_tempo` | Change BPM |
-| `mute/solo/arm_track` | Track controls |
-| `rename_track` / `rename_clip` | Rename |
-| `set_clip_color` / `set_clip_muted` | Clip properties |
-| `create_midi_track` / `create_audio_track` | New tracks |
-| `delete_track` / `duplicate_track` | Track management |
-| `create_scene` / `delete_scene` | Scene management |
-| `create_midi_clip_slot` | New MIDI clip in session view |
-| `create_midi_clip_arr` | New MIDI clip in arrangement |
-| `set_midi_notes` | Write notes into a MIDI clip |
-| `delete_clip` | Remove a clip from a slot |
-| `clear_clips_range` | Erase arrangement range |
-| `insert_device` / `delete_device` / `duplicate_device` | Device chain |
-| `set_device_param` | Set a device parameter by name |
-| `create_cue_point` / `delete_cue_point` | Cue points |
+| Action                  | Description                            |
+| ----------------------- | -------------------------------------- |
+| `set_tempo`             | Change project BPM                     |
+| `mute_track`            | Mute a track                           |
+| `solo_track`            | Solo a track                           |
+| `arm_track`             | Arm a track for recording              |
+| `rename_track`          | Rename a track                         |
+| `rename_clip`           | Rename a clip                          |
+| `set_clip_color`        | Change clip color                      |
+| `set_clip_muted`        | Mute or unmute a clip                  |
+| `create_midi_track`     | Create a MIDI track                    |
+| `create_audio_track`    | Create an audio track                  |
+| `delete_track`          | Delete a track                         |
+| `duplicate_track`       | Duplicate a track                      |
+| `create_scene`          | Create a scene                         |
+| `delete_scene`          | Delete a scene                         |
+| `create_midi_clip_slot` | Create a MIDI clip in Session View     |
+| `create_midi_clip_arr`  | Create a MIDI clip in Arrangement View |
+| `set_midi_notes`        | Write MIDI notes into a clip           |
+| `delete_clip`           | Delete a clip                          |
+| `clear_clips_range`     | Remove clips in an arrangement range   |
+| `insert_device`         | Insert a device                        |
+| `delete_device`         | Delete a device                        |
+| `duplicate_device`      | Duplicate a device                     |
+| `set_device_param`      | Set a device parameter by name         |
+| `create_cue_point`      | Create a cue point                     |
+| `delete_cue_point`      | Delete a cue point                     |
 
-All actions in one response are applied inside `withinTransaction()` — a single undo step in Live.
+---
+
+## Transactions and Undo
+
+All actions returned by the model are executed inside a single:
+
+```ts
+withinTransaction()
+```
+
+This means every change generated from a single prompt becomes one Ableton Live undo step.
+
+---
+
+## Notes
+
+* Claude receives a structured snapshot of the current Live Set rather than raw project files.
+* Conversation history is stored locally inside the extension storage directory.
+* Ollama support enables fully local operation without external API calls.
+* The extension never modifies the Live Set until the user explicitly clicks **Apply**.
