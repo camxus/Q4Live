@@ -96,22 +96,22 @@ export function activate(activation: ActivationContext): void {
     session.setHistory(result.history, result.settings?.activeModelId);
 
     if (result.undo) { session.popHistory(); return; }
-    if (!result.actions?.length) return;
+    if (!result.rawActions?.length) return;
 
     try {
       await api.ui.withinProgressDialog(
-        `Applying ${result.actions.length} action${result.actions.length > 1 ? "s" : ""}…`,
+        `Applying ${result.rawActions.length} action${result.rawActions.length > 1 ? "s" : ""}…`,
         {},
         async () => {
           const promises = api.withinTransaction(() =>
-            result.actions.map((a) => executeAction(api, a))
+            result.rawActions.map((a) => executeAction(api, a))
           );
           await Promise.all(promises);
 
           // If any action was execute_js, store its result so the next
           // dialog open can feed it back into the LLM as context
-          const jsAction = result.actions.find(a => a.type === "execute_js") as
-            (typeof result.actions[0] & { _result?: JsToolResult }) | undefined;
+          const jsAction = result.rawActions.find(a => a.type === "execute_js") as
+            (typeof result.rawActions[0] & { _result?: JsToolResult }) | undefined;
           if (jsAction?._result) {
             session.setLastJsResult({
               ...jsAction._result,

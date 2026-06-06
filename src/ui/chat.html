@@ -854,335 +854,71 @@ document.getElementById("settings-save-btn").addEventListener("click", () => {
 // ═══════════════════════════════════════════════════════════════════════
 // Tool definitions  (single source of truth — API enforces this schema)
 // ═══════════════════════════════════════════════════════════════════════
-const NOTE_DESC = {
-  type:"object", required:["pitch","startTime","duration"], additionalProperties:false,
-  properties:{
-    pitch:             {type:"number",minimum:0,maximum:127},
-    startTime:         {type:"number",minimum:0},
-    duration:          {type:"number",minimum:0.0625},
-    velocity:          {type:"number",minimum:0,maximum:127},
-    muted:             {type:"boolean"},
-    probability:       {type:"number",minimum:0,maximum:1},
-    velocityDeviation: {type:"number",minimum:-127,maximum:127},
-    releaseVelocity:   {type:"number",minimum:0,maximum:127},
-  }
-};
-
-const TOOLS = [
-  { name:"set_tempo", description:"Set the song tempo in BPM.",
-    input_schema:{type:"object",required:["bpm"],additionalProperties:false,
-      properties:{bpm:{type:"number",minimum:20,maximum:999}}}},
-  { name:"mute_track", description:"Mute or unmute a track.",
-    input_schema:{type:"object",required:["trackName","muted"],additionalProperties:false,
-      properties:{trackName:{type:"string"},muted:{type:"boolean"}}}},
-  { name:"solo_track", description:"Solo or unsolo a track.",
-    input_schema:{type:"object",required:["trackName","soloed"],additionalProperties:false,
-      properties:{trackName:{type:"string"},soloed:{type:"boolean"}}}},
-  { name:"arm_track", description:"Arm or disarm a track for recording.",
-    input_schema:{type:"object",required:["trackName","armed"],additionalProperties:false,
-      properties:{trackName:{type:"string"},armed:{type:"boolean"}}}},
-  { name:"rename_track", description:"Rename a track.",
-    input_schema:{type:"object",required:["trackName","newName"],additionalProperties:false,
-      properties:{trackName:{type:"string"},newName:{type:"string"}}}},
-  { name:"rename_clip", description:"Rename a session-view clip by its 0-based slot index.",
-    input_schema:{type:"object",required:["trackName","clipIndex","newName"],additionalProperties:false,
-      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},newName:{type:"string"}}}},
-  { name:"set_clip_color", description:"Set a session clip color. color is a 24-bit RGB integer (red=16711680).",
-    input_schema:{type:"object",required:["trackName","clipIndex","color"],additionalProperties:false,
-      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},color:{type:"number"}}}},
-  { name:"set_clip_muted", description:"Mute or unmute a session-view clip.",
-    input_schema:{type:"object",required:["trackName","clipIndex","muted"],additionalProperties:false,
-      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},muted:{type:"boolean"}}}},
-  { name:"create_midi_track", description:"Create a new MIDI track.",
-    input_schema:{type:"object",additionalProperties:false,
-      properties:{name:{type:"string"}}}},
-  { name:"create_audio_track", description:"Create a new Audio track.",
-    input_schema:{type:"object",additionalProperties:false,
-      properties:{name:{type:"string"}}}},
-  { name:"delete_track", description:"Delete a track.",
-    input_schema:{type:"object",required:["trackName"],additionalProperties:false,
-      properties:{trackName:{type:"string"}}}},
-  { name:"duplicate_track", description:"Duplicate a track. Copy inserted immediately after original.",
-    input_schema:{type:"object",required:["trackName"],additionalProperties:false,
-      properties:{trackName:{type:"string"}}}},
-  { name:"create_scene", description:"Create a scene at a 0-based index.",
-    input_schema:{type:"object",required:["index"],additionalProperties:false,
-      properties:{index:{type:"number",minimum:0},name:{type:"string"}}}},
-  { name:"delete_scene", description:"Delete a scene by 0-based index.",
-    input_schema:{type:"object",required:["sceneIndex"],additionalProperties:false,
-      properties:{sceneIndex:{type:"number",minimum:0}}}},
-  { name:"create_midi_clip_slot", description:"Create a MIDI clip in a session-view slot.",
-    input_schema:{type:"object",required:["trackName","slotIndex","lengthBeats"],additionalProperties:false,
-      properties:{trackName:{type:"string"},slotIndex:{type:"number",minimum:0},lengthBeats:{type:"number",minimum:0.25}}}},
-  { name:"create_midi_clip_arr", description:"Create a MIDI clip in arrangement view.",
-    input_schema:{type:"object",required:["trackName","startBeat","lengthBeats"],additionalProperties:false,
-      properties:{trackName:{type:"string"},startBeat:{type:"number",minimum:0},lengthBeats:{type:"number",minimum:0.25}}}},
-  { name:"set_midi_notes", description:"Overwrite all notes in a session-view MIDI clip.",
-    input_schema:{type:"object",required:["trackName","clipIndex","notes"],additionalProperties:false,
-      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0},
-        notes:{type:"array",items:NOTE_DESC}}}},
-  { name:"delete_clip", description:"Delete a clip from a session-view slot.",
-    input_schema:{type:"object",required:["trackName","clipIndex"],additionalProperties:false,
-      properties:{trackName:{type:"string"},clipIndex:{type:"number",minimum:0}}}},
-  { name:"clear_clips_range", description:"Clear clips in a beat range on a track (arrangement).",
-    input_schema:{type:"object",required:["trackName","startBeat","endBeat"],additionalProperties:false,
-      properties:{trackName:{type:"string"},startBeat:{type:"number"},endBeat:{type:"number"}}}},
-  { name:"rename_clip_arr", description:"Rename an arrangement clip by 0-based index.",
-    input_schema:{type:"object",required:["trackName","arrClipIndex","newName"],additionalProperties:false,
-      properties:{trackName:{type:"string"},arrClipIndex:{type:"number",minimum:0},newName:{type:"string"}}}},
-  { name:"insert_device", description:"Insert a NATIVE Ableton Live device into a track's device chain.",
-    input_schema:{type:"object",required:["trackName","deviceName","index"],additionalProperties:false,
-      properties:{trackName:{type:"string"},
-        deviceName:{type:"string",description:"Native Live device only, e.g. 'Reverb', 'Compressor', 'Gate'"},
-        index:{type:"number",minimum:0}}}},
-  { name:"delete_device", description:"Delete a device from a track.",
-    input_schema:{type:"object",required:["trackName","deviceName"],additionalProperties:false,
-      properties:{trackName:{type:"string"},deviceName:{type:"string"}}}},
-  { name:"duplicate_device", description:"Duplicate a device on a track.",
-    input_schema:{type:"object",required:["trackName","deviceName"],additionalProperties:false,
-      properties:{trackName:{type:"string"},deviceName:{type:"string"}}}},
-  { name:"set_device_param", description:"Set a device parameter by name.",
-    input_schema:{type:"object",required:["trackName","deviceName","paramName","value"],additionalProperties:false,
-      properties:{trackName:{type:"string"},deviceName:{type:"string"},
-        paramName:{type:"string"},value:{type:"number"}}}},
-  { name:"create_cue_point", description:"Create a cue point at a beat position.",
-    input_schema:{type:"object",required:["timeBeat"],additionalProperties:false,
-      properties:{timeBeat:{type:"number",minimum:0},name:{type:"string"}}}},
-  { name:"delete_cue_point", description:"Delete the cue point at a beat position.",
-    input_schema:{type:"object",required:["timeBeat"],additionalProperties:false,
-      properties:{timeBeat:{type:"number"}}}},
-
-  // ── Dynamic JS execution ──────────────────────────────────────────────
-  { name:"execute_js",
-    description:`Write and run arbitrary JavaScript against the Live SDK when no static tool covers the operation.
-The code runs as an async function body inside the extension host (Node.js) with these variables in scope:
-  - song   — the Song object (song.tracks, song.tempo, song.scenes, etc.)
-  - api    — the full ExtensionContext (api.withinTransaction, api.application, etc.)
-  - sdk    — all SDK classes: sdk.MidiTrack, sdk.AudioClip, sdk.WarpMode, sdk.MidiClip, etc.
-  - log()  — write strings back to the result; log("done", count) is returned to you next turn
-
-The entire execution runs inside withinTransaction() — one undo step in Live.
-Return a value if you want it fed back to you: return { moved: count }
-
-Example — pack gaps on all MIDI tracks:
-  const results = [];
-  for (const track of song.tracks) {
-    if (!(track instanceof sdk.MidiTrack)) continue;
-    const clips = [...track.arrangementClips].sort((a,b) => a.startTime - b.startTime);
-    if (clips.length < 2) continue;
-    const snaps = clips.map(c => ({ name:c.name, color:c.color, muted:c.muted,
-      looping:c.looping, loopStart:c.loopStart, loopEnd:c.loopEnd,
-      startMarker:c.startMarker, endMarker:c.endMarker,
-      duration:c.duration, notes:c.notes }));
-    await track.clearClipsInRange(clips[0].startTime, clips[clips.length-1].endTime);
-    let head = snaps[0].startTime;
-    for (const s of snaps) {
-      const nc = await track.createMidiClip(head, s.duration);
-      nc.name=s.name; nc.color=s.color; nc.muted=s.muted;
-      nc.notes=s.notes; head += s.duration;
-    }
-    results.push(track.name);
-  }
-  log("Consolidated:", results.join(", "));
-  return results;`,
-    input_schema:{type:"object",required:["code","description"],additionalProperties:false,
-      properties:{
-        code:{type:"string", description:"Async JS function body. Has song, api, sdk, log in scope."},
-        description:{type:"string", description:"One sentence — what this code does. Shown to the user."},
-      }}},
-];
 
 // ═══════════════════════════════════════════════════════════════════════
 // SDK limitations injected into the system prompt
 // ═══════════════════════════════════════════════════════════════════════
-const CANNOT_DO = [
-  "Create or modify group/folder tracks (no createGroupTrack in SDK v1.0.0)",
-  "Move tracks into groups",
-  "Set track header color (clips only)",
-  "Load third-party VST/AU/AAX plugins — only native Live devices via insertDevice()",
-  "Create return tracks (returnTracks is read-only)",
-  "Configure send routing targets (send level is readable but routing target is not writable)",
-  "Control transport: play, stop, record, loop",
-  "Launch clips in session view",
-  "Load Live presets or samples by name",
-  "Move individual clips to arbitrary positions directly (use execute_js to implement gap-packing or repositioning logic)",
-  "Restore audio clip warp markers after moving (warpMarkers is read-only in SDK v1.0.0)",
-];
+// SDK_LIMITATIONS are handled deterministically by the router — not injected into the prompt.
+// The model does not need to know about them; it only parses intent.
+// See router.ts for the static capability map.
 
-const VALID_NAMES  = new Set(snapshot.tracks.map(t => t.name));
-const VALID_TOOLS  = new Set(TOOLS.map(t => t.name));
 
 // ═══════════════════════════════════════════════════════════════════════
 // System prompt
 // ═══════════════════════════════════════════════════════════════════════
 function buildSystemPrompt() {
   const selCtx = snapshot.selectionCtx
-    ? `\nArrangement selection: beats ${snapshot.selectionCtx.startBeat}–${snapshot.selectionCtx.endBeat}` +
+    ? `Selected: beats ${snapshot.selectionCtx.startBeat}–${snapshot.selectionCtx.endBeat}` +
       (snapshot.selectionCtx.selectedTrackNames.length
         ? `, tracks: ${snapshot.selectionCtx.selectedTrackNames.join(", ")}`
         : "")
     : "";
 
-  return `You are an AI assistant controlling Ableton Live via the Ableton Extensions SDK v1.0.0.
-Use the provided tools to fulfil the user's request. Call multiple tools in one response where needed.
-${selCtx}
+  const jsCtx = lastJsResult
+    ? `Last JS tool: ${lastJsResult.description} — ${lastJsResult.ok ? "ok" : "error: " + lastJsResult.error}` +
+      (lastJsResult.logs?.length ? `\nLogs: ${lastJsResult.logs.join("; ")}` : "") +
+      (lastJsResult.result != null ? `\nResult: ${JSON.stringify(lastJsResult.result)}` : "")
+    : "";
 
-## Current session state
-\`\`\`json
-${JSON.stringify(snapshot, null, 2)}
-\`\`\`
-${lastJsResult ? `
-## Last execute_js result
-Description: ${lastJsResult.description}
-Status: ${lastJsResult.ok ? "success" : "error: " + lastJsResult.error}
-${lastJsResult.logs.length ? "Logs:\n" + lastJsResult.logs.map(l => "  " + l).join("\n") : ""}
-${lastJsResult.result !== null && lastJsResult.result !== undefined ? "Return value: " + JSON.stringify(lastJsResult.result) : ""}
-` : ""}
-## Hard constraints (SDK limitations — do NOT attempt workarounds)
-${CANNOT_DO.map((c,i) => `${i+1}. ${c}`).join("\n")}
+  return `You are a parser. Convert the user message into ONE JSON object. No prose. No explanation.
 
-## Rules
+SESSION:
+Tracks: ${snapshot.tracks.map(t => `"${t.name}" (${t.type})`).join(", ")}
+Tempo: ${snapshot.tempo} BPM
+${selCtx}${jsCtx ? "\n" + jsCtx : ""}
 
-### Target resolution (most important)
-- Infer the intended track, clip, or device from the user's natural language and the session state above.
-- "the bass" → find the track whose name most closely matches "bass" (case-insensitive, partial match).
-- "first clip on drums" → track matching "drums", clipSlots[0].
-- "the kick" → track matching "kick".
-- "last track" → snapshot.tracks[snapshot.tracks.length - 1].
-- Once you have resolved the target, use its EXACT name from the session state in the tool call.
-- If two or more tracks are plausible matches (e.g. "bass" matches both "Bass" and "Sub Bass"),
-  do NOT guess. Instead reply ONLY with this JSON and nothing else:
-  {"ambiguous":true,"prompt":"<what the user said>","candidates":["<name1>","<name2>"]}
-  The app will ask the user to clarify and retry.
+OUTPUT SCHEMA (pick exactly one intent):
 
-### Other rules
-- clipIndex is 0-based, refers to clipSlots[].
-- arrClipIndex is 0-based, refers to arrangementClips[].
-- set_clip_color: 24-bit RGB integer (red=16711680, blue=255, green=65280, orange=16744448).
-- All tool calls in one response are applied as a single undo step.
-- If something is entirely unsupported by the SDK, respond with ONLY this JSON and nothing else:
-  {"sdk_limitation":true,"feature":"<short name>","reason":"<one sentence>","user_request":"<verbatim prompt>"}
-  Do NOT call any tools alongside this. Do NOT add prose before or after it.
-- If partially unsupported, execute the supported parts with tools, then append the limitation JSON on its own line.
-- Never invent tools or workarounds for items listed in Hard Constraints.
+{ "intent": "actions", "actions": [ ...Action[] ] }
+{ "intent": "js", "js": { "code": "...", "description": "..." } }
+{ "intent": "clarify", "clarify": { "question": "...", "candidates": ["...", "..."] } }
+{ "intent": "unsupported", "unsupported": { "feature": "...", "reason": "..." } }
+{ "intent": "query", "answer": "..." }
 
-### execute_js — write new tools at runtime
-When a user request cannot be satisfied by the static tools above, use execute_js.
-Write a JS async function body. It has in scope:
-  song, api, sdk (all SDK classes), log() (captured output returned to you)
-The code runs in the extension host inside withinTransaction() — one undo step.
+RULES:
+- intent must be exactly one of those five strings
+- Use "actions" for any mutation the static action types cover
+- Use "js" ONLY when no static action type covers the operation (bulk loops, complex reads)
+- Use "clarify" ONLY when target is genuinely ambiguous from context alone
+- Use "unsupported" ONLY when the operation is impossible with the current SDK
+- Use "query" for read-only questions about the session
+- trackName and deviceName: use the closest matching name from the SESSION above
+- If two tracks match equally, use "clarify" — do not guess
+- Emit raw JSON only — no markdown fences, no commentary
 
-Use execute_js when:
-- The operation requires looping over tracks/clips programmatically
-- You need to read state and conditionally mutate (e.g. "pack gaps", "find clips longer than 4 bars")
-- No static tool covers the exact operation
-
-Do NOT use execute_js for things covered by static tools — use the tool directly.`;
+ACTION TYPES:
+set_tempo(bpm) | mute_track(trackName,muted) | solo_track(trackName,soloed) | arm_track(trackName,armed)
+rename_track(trackName,newName) | rename_clip(trackName,clipIndex,newName) | set_clip_color(trackName,clipIndex,color)
+set_clip_muted(trackName,clipIndex,muted) | create_midi_track(name?) | create_audio_track(name?)
+delete_track(trackName) | duplicate_track(trackName) | create_scene(index,name?) | delete_scene(sceneIndex)
+create_midi_clip_slot(trackName,slotIndex,lengthBeats) | create_midi_clip_arr(trackName,startBeat,lengthBeats)
+set_midi_notes(trackName,clipIndex,notes[]) | delete_clip(trackName,clipIndex)
+clear_clips_range(trackName,startBeat,endBeat) | rename_clip_arr(trackName,arrClipIndex,newName)
+insert_device(trackName,deviceName,index) | delete_device(trackName,deviceName)
+duplicate_device(trackName,deviceName) | set_device_param(trackName,deviceName,paramName,value)
+create_cue_point(timeBeat,name?) | delete_cue_point(timeBeat)`;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// Resolver — fuzzy-matches LLM output to exact session names
-// Runs BEFORE validateAction so the LLM never needs exact strings.
-// ═══════════════════════════════════════════════════════════════════════
-
-/** Normalise a string for fuzzy comparison */
-function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]/g, ""); }
-
-/**
- * Score how well `candidate` matches `query`.
- * Returns 0–1: 1 = exact match, 0 = no overlap.
- */
-function matchScore(query, candidate) {
-  const q = norm(query);
-  const c = norm(candidate);
-  if (!q || !c) return 0;
-  if (c === q)           return 1;       // exact
-  if (c.startsWith(q))   return 0.9;    // prefix
-  if (c.includes(q))     return 0.75;   // substring
-  if (q.includes(c))     return 0.6;    // reverse substring
-  // character overlap score
-  const qSet = new Set(q);
-  const cSet = new Set(c);
-  const overlap = [...qSet].filter(ch => cSet.has(ch)).length;
-  return overlap / Math.max(qSet.size, cSet.size) * 0.5;
-}
-
-const AMBIGUITY_THRESHOLD = 0.15;  // max gap between top-2 scores to call ambiguous
-const MIN_SCORE = 0.3;              // minimum score to accept any match
-
-/**
- * Given a possibly-fuzzy trackName from the LLM, resolve it to the exact
- * name in the session snapshot. Returns:
- *   { resolved: "Exact Name" }           — unambiguous match
- *   { ambiguous: ["Name A", "Name B"] }  — too close to call
- *   { unresolved: true }                  — no match above threshold
- */
-function resolveTrackName(fuzzy) {
-  if (VALID_NAMES.has(fuzzy)) return { resolved: fuzzy };  // already exact
-
-  const scored = snapshot.tracks
-    .map(t => ({ name: t.name, score: matchScore(fuzzy, t.name) }))
-    .filter(x => x.score >= MIN_SCORE)
-    .sort((a, b) => b.score - a.score);
-
-  if (!scored.length) return { unresolved: true };
-
-  const best = scored[0];
-  const second = scored[1];
-
-  // Ambiguous if two candidates are within threshold of each other
-  if (second && (best.score - second.score) < AMBIGUITY_THRESHOLD) {
-    return { ambiguous: scored.slice(0, 4).map(x => x.name) };
-  }
-
-  return { resolved: best.name };
-}
-
-/**
- * Resolve fuzzy references in an action in-place.
- * Returns null if resolved OK, or an error string if unresolvable/ambiguous.
- */
-function resolveAction(action) {
-  if (!("trackName" in action)) return null;  // no track reference to resolve
-  if (VALID_NAMES.has(action.trackName)) return null;  // already exact
-
-  const result = resolveTrackName(action.trackName);
-
-  if (result.resolved) {
-    action._resolvedFrom = action.trackName;  // keep original for display
-    action.trackName = result.resolved;
-    return null;
-  }
-  if (result.ambiguous) {
-    // Include the action reference so the bubble can patch it directly on click
-    return { ambiguous: true, candidates: result.ambiguous, original: action.trackName, ambiguousAction: action };
-  }
-  return `Track "${action.trackName}" could not be matched to any track in the session`;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Validate (runs after resolver — trackName should be exact by this point)
-// ═══════════════════════════════════════════════════════════════════════
-function validateAction(action) {
-  if (!VALID_TOOLS.has(action.type))
-    return `Unknown action type "${action.type}"`;
-  if ("trackName" in action && !VALID_NAMES.has(action.trackName))
-    return `Track "${action.trackName}" not found in session`;
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Parse ambiguity response from LLM
-// ═══════════════════════════════════════════════════════════════════════
-function parseAmbiguity(text) {
-  const match = text.match(/\{[^{}]*"ambiguous"\s*:\s*true[^{}]*\}/s);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]);
-    if (parsed.ambiguous === true && Array.isArray(parsed.candidates)) return parsed;
-  } catch {}
-  return null;
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Rendering
@@ -1478,31 +1214,107 @@ async function captureFeatureRequest(limitation) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// LLM fetch — uses native tool_use for Anthropic; JSON prompt for Ollama
-// ═══════════════════════════════════════════════════════════════════════
-// ── OpenAI-compatible tool schema (used by OpenAI, Gemini, Custom) ───────
-function toOpenAITools() {
-  return TOOLS.map(t => ({
-    type: "function",
-    function: {
-      name:        t.name,
-      description: t.description,
-      parameters:  t.input_schema,
-    }
-  }));
+
+// =============================================================================
+// Intent envelope parser + browser-side router
+// =============================================================================
+
+function parseIntentEnvelope(raw) {
+  const clean = raw.replace(/^```json\n?/i, "").replace(/\n?```$/, "").trim();
+  try {
+    const parsed = JSON.parse(clean);
+    if (parsed && typeof parsed.intent === "string") return parsed;
+    return { intent: "query", answer: raw };
+  } catch (_e) {
+    return { intent: "query", answer: raw };
+  }
 }
 
-// ── Parse OpenAI-style tool_calls response ────────────────────────────────
+function _norm(s) { return s.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+
+function _matchScore(q, cand) {
+  const qn = _norm(q), cn = _norm(cand);
+  if (!qn || !cn)       return 0;
+  if (cn === qn)        return 1;
+  if (cn.startsWith(qn)) return 0.9;
+  if (cn.includes(qn))  return 0.75;
+  if (qn.includes(cn))  return 0.6;
+  const qS = new Set(qn), cS = new Set(cn);
+  return ([...qS].filter(ch => cS.has(ch)).length / Math.max(qS.size, cS.size)) * 0.5;
+}
+
+function _resolveTarget(fuzzy, candidates) {
+  if (candidates.includes(fuzzy)) return { resolved: fuzzy };
+  const scored = candidates
+    .map(n => ({ n, s: _matchScore(fuzzy, n) }))
+    .filter(x => x.s >= 0.3)
+    .sort((a, b) => b.s - a.s);
+  if (!scored.length) return { unresolved: true };
+  const best = scored[0], second = scored[1];
+  if (second && (best.s - second.s) < 0.15)
+    return { ambiguous: scored.slice(0, 4).map(x => x.n) };
+  return { resolved: best.n };
+}
+
+function routeIntent(intentObj) {
+  const trackNames = snapshot.tracks.map(t => t.name);
+  switch (intentObj.intent) {
+    case "query":
+      return { type: "answer", text: intentObj.answer || "" };
+    case "unsupported":
+      return { type: "unsupported",
+        feature: (intentObj.unsupported || {}).feature || "unknown",
+        reason:  (intentObj.unsupported || {}).reason  || "" };
+    case "clarify":
+      return { type: "clarify",
+        question:       (intentObj.clarify || {}).question   || "Which did you mean?",
+        candidates:     (intentObj.clarify || {}).candidates || [],
+        pendingActions: [] };
+    case "js":
+      if (!intentObj.js || !intentObj.js.code)
+        return { type: "error", message: "js intent missing code" };
+      return { type: "execute_js",
+        code:        intentObj.js.code,
+        description: intentObj.js.description || "" };
+    case "actions": {
+      if (!intentObj.actions || !intentObj.actions.length)
+        return { type: "error", message: "No actions" };
+      const resolved = [];
+      for (const raw of intentObj.actions) {
+        const act = Object.assign({}, raw);
+        if (typeof act.trackName === "string") {
+          const r = _resolveTarget(act.trackName, trackNames);
+          if (r.unresolved)
+            return { type: "error", message: "Track \"" + act.trackName + "\" not found" };
+          if (r.ambiguous)
+            return { type: "clarify",
+              question:       "Which track to " + act.type.replace(/_/g," ") + "?",
+              candidates:     r.ambiguous,
+              pendingActions: intentObj.actions };
+          act.trackName = r.resolved;
+        }
+        if (typeof act.deviceName === "string" && typeof act.trackName === "string") {
+          const track = snapshot.tracks.find(t => t.name === act.trackName);
+          if (track) {
+            const r = _resolveTarget(act.deviceName, track.devices);
+            if (r.resolved) act.deviceName = r.resolved;
+          }
+        }
+        resolved.push(act);
+      }
+      return { type: "execute", actions: resolved };
+    }
+    default:
+      return { type: "error", message: "Unknown intent: " + intentObj.intent };
+  }
+}
+
+
+
 function parseOpenAIResponse(data) {
   const msg = data.choices?.[0]?.message;
   if (!msg) throw new Error("No choices in response");
-  const text = msg.content || "";
-  const toolCalls = (msg.tool_calls || []).map(tc => ({
-    type: tc.function.name,
-    ...JSON.parse(tc.function.arguments || "{}"),
-  }));
-  return { text, toolCalls };
+  return { text: msg.content || "" };
 }
 
 async function fetchLLM(userMessage) {
@@ -1519,18 +1331,14 @@ async function fetchLLM(userMessage) {
       headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
         model, stream:false,
-        system: buildSystemPrompt() +
-          "\n\nReturn ONLY valid JSON: {\"text\":\"...\",\"actions\":[...]}\n" +
-          "actions is an array of objects with \"type\" matching a tool name plus its required fields.\n" +
-          "Emit [] for actions if no changes needed.",
+        system: buildSystemPrompt() + "\n\nReturn ONLY the JSON intent object. No markdown. No prose.",
         messages: messages.map(t => ({ role:t.role, content:t.content })),
       })
     });
     if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text()}`);
-    const data  = await resp.json();
-    const raw   = data.message.content.replace(/```json|```/g,"").trim();
-    const parsed = JSON.parse(raw);
-    return { text: parsed.text ?? raw, toolCalls: parsed.actions ?? [] };
+    const data = await resp.json();
+    const raw  = data.message.content.replace(/```json[\s\S]*?```|```/g, "").trim();
+    return parseIntentEnvelope(raw);
   }
 
   // ── Anthropic (native /v1/messages with tool_use) ─────────────────
@@ -1546,12 +1354,10 @@ async function fetchLLM(userMessage) {
         "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        model:       activeModel?.id ?? "claude-sonnet-4-5",
-        max_tokens:  4096,
-        system:      buildSystemPrompt(),
-        tools:       TOOLS,
-        tool_choice: { type:"auto" },
-        messages:    messages.map(t => ({ role:t.role, content:t.content })),
+        model:      activeModel?.id ?? "claude-sonnet-4-5",
+        max_tokens: 1024,
+        system:     buildSystemPrompt(),
+        messages:   messages.map(t => ({ role:t.role, content:t.content })),
       })
     });
     if (!resp.ok) {
@@ -1559,18 +1365,11 @@ async function fetchLLM(userMessage) {
       throw new Error(err.error?.message ?? `Anthropic API error ${resp.status}`);
     }
     const data = await resp.json();
-    let text = "";
-    const toolCalls = [];
+    let raw = "";
     for (const block of data.content) {
-      if (block.type === "text")     text += block.text;
-      if (block.type === "tool_use") toolCalls.push({ type:block.name, ...block.input });
+      if (block.type === "text") raw += block.text;
     }
-    const limitation = parseLimitation(text);
-    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
-    return {
-      text: limitation ? limitation.reason : ambiguity ? null : text.trim(),
-      toolCalls, limitation, ambiguity,
-    };
+    return parseIntentEnvelope(raw.trim());
   }
 
   // ── OpenAI (chat completions + function calling) ──────────────────
@@ -1584,11 +1383,10 @@ async function fetchLLM(userMessage) {
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model:       activeModel?.id ?? "gpt-4o",
-        max_tokens:  4096,
-        tools:       toOpenAITools(),
-        tool_choice: "auto",
-        messages:    [
+        model:           activeModel?.id ?? "gpt-4o",
+        max_tokens:      1024,
+        response_format: { type: "json_object" },
+        messages:        [
           { role:"system", content: buildSystemPrompt() },
           ...messages.map(t => ({ role:t.role, content:t.content })),
         ],
@@ -1598,10 +1396,8 @@ async function fetchLLM(userMessage) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.error?.message ?? `OpenAI API error ${resp.status}`);
     }
-    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
-    const limitation = parseLimitation(text);
-    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
-    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
+    const { text } = parseOpenAIResponse(await resp.json());
+    return parseIntentEnvelope(text);
   }
 
   // ── Gemini (OpenAI-compatible endpoint) ──────────────────────────
@@ -1619,10 +1415,8 @@ async function fetchLLM(userMessage) {
         },
         body: JSON.stringify({
           model,
-          max_tokens:  4096,
-          tools:       toOpenAITools(),
-          tool_choice: "auto",
-          messages:    [
+          max_tokens: 1024,
+          messages:   [
             { role:"system", content: buildSystemPrompt() },
             ...messages.map(t => ({ role:t.role, content:t.content })),
           ],
@@ -1633,10 +1427,8 @@ async function fetchLLM(userMessage) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.error?.message ?? `Gemini API error ${resp.status}`);
     }
-    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
-    const limitation = parseLimitation(text);
-    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
-    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
+    const { text } = parseOpenAIResponse(await resp.json());
+    return parseIntentEnvelope(text);
   }
 
   // ── Custom OpenAI-compatible endpoint ────────────────────────────
@@ -1652,11 +1444,9 @@ async function fetchLLM(userMessage) {
         ...(apiKey ? { "Authorization": `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
-        model:       activeModel?.id ?? "default",
-        max_tokens:  4096,
-        tools:       toOpenAITools(),
-        tool_choice: "auto",
-        messages:    [
+        model:      activeModel?.id ?? "default",
+        max_tokens: 1024,
+        messages:   [
           { role:"system", content: buildSystemPrompt() },
           ...messages.map(t => ({ role:t.role, content:t.content })),
         ],
@@ -1666,31 +1456,18 @@ async function fetchLLM(userMessage) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.error?.message ?? `Custom endpoint error ${resp.status}`);
     }
-    const { text, toolCalls } = parseOpenAIResponse(await resp.json());
-    const limitation = parseLimitation(text);
-    const ambiguity  = !limitation ? parseAmbiguity(text) : null;
-    return { text: limitation ? limitation.reason : text.trim(), toolCalls, limitation, ambiguity };
+    const { text } = parseOpenAIResponse(await resp.json());
+    return parseIntentEnvelope(text);
   }
 
   throw new Error(`Unknown provider: ${provider}`);
-}
-
-function parseLimitation(text) {
-  // Model returns either a bare JSON object or one appended after tool prose
-  const match = text.match(/\{[^{}]*"sdk_limitation"\s*:\s*true[^{}]*\}/s);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]);
-    if (parsed.sdk_limitation) return parsed;
-  } catch {}
-  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 // Send
 // ═══════════════════════════════════════════════════════════════════════
 async function send() {
-  const input  = document.getElementById("prompt");
+  const input   = document.getElementById("prompt");
   const userMsg = input.value.trim();
   if (!userMsg) return;
   input.value = "";
@@ -1700,9 +1477,9 @@ async function send() {
   turns.push({ role:"user", content:userMsg });
 
   const thinking = addThinkingBubble();
-  let result;
+  let intentObj;
   try {
-    result = await fetchLLM(userMsg);
+    intentObj = await fetchLLM(userMsg);
   } catch(e) {
     thinking.remove();
     turns.pop();
@@ -1712,91 +1489,67 @@ async function send() {
   }
   thinking.remove();
 
-  const { text, toolCalls, limitation, ambiguity } = result;
+  // ── Deterministic routing ─────────────────────────────────────────
+  const outcome = routeIntent(intentObj);
 
-  // ── Pure SDK limitation — no tools called ──────────────────────────
-  if (limitation && !toolCalls.length) {
-    turns.push({ role:"assistant", content: `[SDK Limitation] ${limitation.feature}: ${limitation.reason}` });
-    addLimitationBubble(limitation);
-    document.getElementById("send-btn").disabled = false;
-    return;
-  }
+  switch (outcome.type) {
 
-  // ── Ambiguity — LLM couldn't pick one track (Mode B) ───────────────
-  if (ambiguity) {
-    const clarifyText = `I found multiple tracks that could match "${ambiguity.prompt || "your request"}": ${ambiguity.candidates.join(", ")}. Which one did you mean?`;
-    turns.push({ role:"assistant", content: clarifyText });
-    // No stashed actions — re-send with clarification
-    addAmbiguityBubble(clarifyText, ambiguity.candidates, null, null, ambiguity.prompt || userMsg);
-    document.getElementById("send-btn").disabled = false;
-    return;
-  }
+    case "answer": {
+      const text = outcome.text || "(no response)";
+      turns.push({ role:"assistant", content:text });
+      addBubble("assistant", text);
+      break;
+    }
 
-  // ── Run resolver on every tool call before validation ─────────────
-  // Mutates action.trackName in-place to the exact session name.
-  const resolveErrors = [];
-  const clientAmbiguities = [];
+    case "execute": {
+      const annotated = outcome.actions.map(a => ({ action: a, error: null }));
+      pending = [...pending, ...outcome.actions];
+      const summary = outcome.actions.map(a => a.type.replace(/_/g," ")).join(", ");
+      turns.push({ role:"assistant", content:"Actions: " + summary });
+      addBubble("assistant", null, annotated);
+      const applyBtn = document.getElementById("apply-btn");
+      applyBtn.style.display = "";
+      applyBtn.style.animation = "none";
+      applyBtn.offsetHeight;
+      applyBtn.style.animation = "";
+      break;
+    }
 
-  for (const action of toolCalls) {
-    const result = resolveAction(action);
-    if (!result) continue;
-    if (typeof result === "string") {
-      resolveErrors.push({ action, error: result });
-    } else if (result.ambiguous) {
-      clientAmbiguities.push(result);
+    case "execute_js": {
+      const jsAction = { type: "execute_js", code: outcome.code, description: outcome.description };
+      pending = [...pending, jsAction];
+      turns.push({ role:"assistant", content: outcome.description });
+      addBubble("assistant", null, [{ action: jsAction, error: null }]);
+      const applyBtn = document.getElementById("apply-btn");
+      applyBtn.style.display = "";
+      applyBtn.style.animation = "none";
+      applyBtn.offsetHeight;
+      applyBtn.style.animation = "";
+      break;
+    }
+
+    case "clarify": {
+      turns.push({ role:"assistant", content: outcome.question });
+      addAmbiguityBubble(outcome.question, outcome.candidates, null, null, userMsg);
+      break;
+    }
+
+    case "unsupported": {
+      turns.push({ role:"assistant", content: "[unsupported] " + outcome.feature });
+      addLimitationBubble({ feature: outcome.feature, reason: outcome.reason, user_request: userMsg });
+      break;
+    }
+
+    case "error": {
+      turns.push({ role:"assistant", content: "[error] " + outcome.message });
+      addBubble("error", outcome.message);
+      break;
     }
   }
 
-  // If any client-side ambiguity (two tracks score too close), ask user
-  // Mode A: stash the full toolCalls batch — on candidate click we patch
-  // just the ambiguous trackName and apply without a new LLM call.
-  if (clientAmbiguities.length) {
-    const first = clientAmbiguities[0];
-    const question = `Which track did you mean to ${first.action?.type?.replace(/_/g," ") ?? "target"}?`;
-    turns.push({ role:"assistant", content: question + " — " + first.candidates.join(", ") });
-    pendingAmbiguous = { actions: toolCalls, ambiguousAction: first.ambiguousAction };
-    addAmbiguityBubble(
-      question,
-      first.candidates,
-      toolCalls,           // stashedActions
-      first.ambiguousAction, // the action object to patch
-      first.original       // original fuzzy string
-    );
-    document.getElementById("send-btn").disabled = false;
-    return;
-  }
-
-  // ── Annotate remaining actions with validation errors ─────────────
-  const annotated = toolCalls.map(action => {
-    const resolveErr = resolveErrors.find(e => e.action === action);
-    return {
-      action,
-      error: resolveErr ? resolveErr.error : validateAction(action),
-      resolvedFrom: action._resolvedFrom ?? null,
-    };
-  });
-  const valid = annotated.filter(a => !a.error).map(a => a.action);
-
-  const display = text || (toolCalls.length
-    ? `Applying ${toolCalls.length} action${toolCalls.length>1?"s":""}…`
-    : "(no response)");
-
-  turns.push({ role:"assistant", content:display });
-  pending = [...pending, ...valid];
-
-  if (display) addBubble("assistant", display, annotated);
-  if (limitation) addLimitationBubble(limitation);
-
-  if (pending.length) {
-    const applyBtn = document.getElementById("apply-btn");
-    applyBtn.style.display = "";
-    // Re-trigger pop-in animation each time new actions are added
-    applyBtn.style.animation = "none";
-    applyBtn.offsetHeight;   // force reflow
-    applyBtn.style.animation = "";
-  }
   document.getElementById("send-btn").disabled = false;
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // Button handlers
