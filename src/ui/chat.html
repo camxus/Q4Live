@@ -59,7 +59,7 @@
     .tab:hover:not(.active) { color:var(--text); }
 
     /* ── Panels ── */
-    #chat-panel,#settings-panel { flex:1; display:flex; flex-direction:column;
+    #chat-panel,#settings-panel,#components-panel { flex:1; display:flex; flex-direction:column;
       overflow:hidden; }
     .hidden { display:none !important; }
 
@@ -308,6 +308,28 @@
     /* ═══════════════════════════════════════════════════════════════════
        Reduce motion — respect OS preference
     // ═══════════════════════════════════════════════════════════════════ */
+    /* ── Component cards ─────────────────────────────────────────── */
+    .comp-card { background:var(--bg-2); border:1px solid var(--border);
+      border-radius:var(--r); padding:10px 12px; cursor:pointer;
+      transition:border-color 120ms, background 120ms; }
+    .comp-card:hover { border-color:var(--dim); background:var(--bg-3); }
+    .comp-card-name { font-size:12px; font-weight:500; margin-bottom:3px; }
+    .comp-card-desc { font-size:10.5px; color:var(--dim); line-height:1.5; }
+    .comp-card-meta { font-size:10px; color:var(--hint,hsl(0,0%,30%));
+      margin-top:5px; font-family:var(--mono); }
+    .comp-card-actions { display:flex; gap:5px; margin-top:7px; }
+    .comp-empty { text-align:center; color:var(--dim); font-size:11px;
+      padding:32px 16px; font-style:italic; }
+
+    /* Building indicator */
+    .comp-building { display:flex; align-items:center; gap:8px; padding:10px 12px;
+      background:hsl(260,20%,14%); border:1px solid hsl(260,35%,28%);
+      border-radius:var(--r); font-size:11px; color:hsl(260,60%,70%); }
+    @keyframes comp-spin { to { transform: rotate(360deg); } }
+    .comp-spinner { width:12px; height:12px; border:2px solid hsl(260,35%,28%);
+      border-top-color:hsl(260,60%,60%); border-radius:50%;
+      animation:comp-spin 800ms linear infinite; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 1ms !important;
@@ -572,6 +594,7 @@
 <!-- Tab bar -->
 <div id="tabs">
   <div class="tab active" data-tab="chat">Chat</div>
+  <div class="tab" data-tab="components">Components</div>
   <div class="tab" data-tab="settings">⚙ Settings</div>
 </div>
 
@@ -586,6 +609,27 @@
 </div>
 
 <!-- ── Settings panel ─────────────────────────────────────────────────── -->
+<!-- ── Components panel ──────────────────────────────────────────────────── -->
+<div id="components-panel" class="hidden" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+  <div id="comp-list-view" style="display:flex;flex-direction:column;height:100%;">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <span style="font-size:12px;font-weight:500;">Components</span>
+      <span id="comp-count" style="font-size:10px;color:var(--dim);"></span>
+      <span style="margin-left:auto;font-size:10px;color:var(--dim);font-style:italic;">type /create-component in chat</span>
+    </div>
+    <div id="comp-list" style="overflow-y:auto;flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+  <div id="comp-runner-view" style="display:none;flex-direction:column;height:100%;">
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <button class="tb-btn" id="comp-back-btn">&larr; Back</button>
+      <span id="comp-runner-title" style="font-size:12px;font-weight:500;"></span>
+      <button class="tb-btn" id="comp-delete-btn" style="margin-left:auto;color:hsl(0,55%,55%);">Delete</button>
+    </div>
+    <iframe id="comp-iframe" style="flex:1;border:none;background:var(--bg);width:100%;" sandbox="allow-scripts"></iframe>
+  </div>
+</div>
+
+
 <div id="settings-panel" class="hidden">
 
   <div class="s-section">
@@ -662,15 +706,35 @@
 // ═══════════════════════════════════════════════════════════════════════
 // Bootstrap
 // ═══════════════════════════════════════════════════════════════════════
-const { snapshot, history, settings: initSettings, lastJsResult } =
+const { snapshot, history, settings: initSettings, lastJsResult, components: initComponents } =
   ((() => {
     try {
       return JSON.parse(decodeURIComponent("__PAYLOAD__"));
     } catch {
       // Stub for browser preview / development
       return {
-        snapshot: { tempo: 120, scaleName: "Major", rootNote: 0, scaleMode: true,
-          tracks: [], scenes: [], cuePoints: [] },
+        snapshot: {
+          tempo: 128, scaleName: "Minor", rootNote: 9, scaleMode: true,
+          tracks: [
+            { name: "Kick",        type: "audio", mute: false, solo: false, arm: false, devices: ["Drum Buss"], clipSlots: ["Loop A", null, null], arrangementClips: [] },
+            { name: "Snare",       type: "audio", mute: false, solo: false, arm: false, devices: [],            clipSlots: ["Loop A", null, null], arrangementClips: [] },
+            { name: "Hi-Hat",      type: "audio", mute: true,  solo: false, arm: false, devices: [],            clipSlots: ["Loop A", null, null], arrangementClips: [] },
+            { name: "Bass Guitar", type: "midi",  mute: false, solo: false, arm: true,  devices: ["Wavetable", "Compressor"], clipSlots: ["Intro", "Verse", null], arrangementClips: [] },
+            { name: "Sub Bass",    type: "midi",  mute: false, solo: false, arm: false, devices: ["Operator"],  clipSlots: [null, null, null],          arrangementClips: [] },
+            { name: "Lead Synth",  type: "midi",  mute: false, solo: false, arm: false, devices: ["Analog", "Reverb", "Auto Filter"], clipSlots: ["Melody 1", null, "Bridge"], arrangementClips: [] },
+            { name: "Vocals",      type: "audio", mute: false, solo: false, arm: false, devices: ["Gate", "Compressor", "EQ Eight"], clipSlots: ["Verse 1", "Chorus", null], arrangementClips: [] },
+            { name: "Backing Vox", type: "audio", mute: true,  solo: false, arm: false, devices: ["Compressor"], clipSlots: [null, "Chorus", null],  arrangementClips: [] },
+          ],
+          scenes: [
+            { name: "Intro",  tempo: 128, timeSig: "4/4" },
+            { name: "Verse",  tempo: 128, timeSig: "4/4" },
+            { name: "Chorus", tempo: 128, timeSig: "4/4" },
+          ],
+          cuePoints: [
+            { name: "Drop", timeBeat: 32 },
+          ],
+          selectionCtx: null,
+        },
         history: [],
         settings: {
           anthropicApiKey: "", ollamaEndpoint: "http://localhost:11434",
@@ -689,6 +753,7 @@ const { snapshot, history, settings: initSettings, lastJsResult } =
           mixpanelToken: "", posthogApiKey: "", posthogHost: "",
         },
         lastJsResult: null,
+        components: [],
       };
     }
   })());
@@ -696,6 +761,10 @@ const { snapshot, history, settings: initSettings, lastJsResult } =
 let turns    = [...history];
 let pending  = [];           // validated Action[]
 let cfg      = { ...initSettings };   // live copy of settings
+
+// Component store (synced back to host on close)
+let componentStore = Array.isArray(initComponents) ? [...initComponents] : [];
+let pendingComponentOp = null;  // set when user creates/edits/deletes a component
 
 // When ambiguity is detected we stash the full action batch here.
 // On candidate selection we patch the unresolved slot and apply directly.
@@ -710,9 +779,21 @@ function postToHost(msg) {
     window.webkit.messageHandlers.live.postMessage(msg);
   else if (window.chrome?.webview)
     window.chrome.webview.postMessage(msg);
+  else
+    console.info("[Q] postToHost (no Live bridge):", msg);
 }
 function closeWithResult(payload) {
-  postToHost({ method: "close_and_send", params: [JSON.stringify(payload)] });
+  // Always include pending component op
+  if (pendingComponentOp) payload.componentOp = pendingComponentOp;
+  if (window.webkit?.messageHandlers?.live || window.chrome?.webview) {
+    postToHost({ method: "close_and_send", params: [JSON.stringify(payload)] });
+  } else {
+    console.group("[Q] closeWithResult:");
+    if (payload.rawActions?.length) console.log("Actions:", payload.rawActions);
+    if (payload.componentOp) console.log("ComponentOp:", payload.componentOp);
+    if (payload.undo) console.log("Undo turn");
+    console.groupEnd();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -737,15 +818,19 @@ document.getElementById("model-select").addEventListener("change", e => {
 // ═══════════════════════════════════════════════════════════════════════
 // Tab switching
 // ═══════════════════════════════════════════════════════════════════════
+function switchTab(tabName) {
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.tab === tabName)
+  );
+  document.getElementById("chat-panel").classList.toggle("hidden", tabName !== "chat");
+  document.getElementById("settings-panel").classList.toggle("hidden", tabName !== "settings");
+  document.getElementById("components-panel").classList.toggle("hidden", tabName !== "components");
+  if (tabName === "settings")    renderSettings();
+  if (tabName === "components")  renderComponentList();
+}
+
 document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    const which = tab.dataset.tab;
-    document.getElementById("chat-panel").classList.toggle("hidden", which !== "chat");
-    document.getElementById("settings-panel").classList.toggle("hidden", which !== "settings");
-    if (which === "settings") renderSettings();
-  });
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1559,10 +1644,10 @@ document.getElementById("prompt").addEventListener("keydown", e => {
   if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
 });
 document.getElementById("apply-btn").addEventListener("click", () => {
-  closeWithResult({ actions:pending, history:turns, model:cfg.activeModelId, settings:cfg });
+  closeWithResult({ rawActions:pending, intents:[], history:turns, model:cfg.activeModelId, settings:cfg });
 });
 document.getElementById("undo-btn").addEventListener("click", () => {
-  closeWithResult({ actions:[], history:turns, model:cfg.activeModelId, settings:cfg, undo:true });
+  closeWithResult({ rawActions:[], intents:[], history:turns, model:cfg.activeModelId, settings:cfg, undo:true });
 });
 document.getElementById("clear-btn").addEventListener("click", () => {
   turns=[]; pending=[];
@@ -1571,7 +1656,7 @@ document.getElementById("clear-btn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => {
   if (e.key==="Escape")
-    closeWithResult({ actions:[], history:turns, model:cfg.activeModelId, settings:cfg });
+    closeWithResult({ rawActions:[], intents:[], history:turns, model:cfg.activeModelId, settings:cfg });
 });
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1610,11 +1695,7 @@ function initWelcome() {
     e.stopPropagation();
     clearInterval(exTimer);
     welcome.classList.add("gone");
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    document.querySelector('[data-tab="settings"]').classList.add("active");
-    document.getElementById("chat-panel").classList.add("hidden");
-    document.getElementById("settings-panel").classList.remove("hidden");
-    renderSettings();
+    switchTab("settings");
   });
 
   // Build cycling example elements
@@ -1688,6 +1769,267 @@ function initWelcome() {
 
   // Autofocus
   setTimeout(() => wPrompt.focus(), 120);
+}
+
+
+// =============================================================================
+// Component system
+// =============================================================================
+
+function renderComponentList() {
+  const list  = document.getElementById("comp-list");
+  const count = document.getElementById("comp-count");
+  count.textContent = componentStore.length ? `(${componentStore.length})` : "";
+  if (!componentStore.length) {
+    list.innerHTML = '<div class="comp-empty">No components yet.<br>Type /create-component in chat to build one.</div>';
+    return;
+  }
+  list.innerHTML = "";
+  componentStore.forEach(comp => {
+    const card = document.createElement("div");
+    card.className = "comp-card";
+    card.innerHTML = `
+      <div class="comp-card-name">${comp.name}</div>
+      <div class="comp-card-desc">${comp.description}</div>
+      <div class="comp-card-meta">${new Date(comp.createdAt).toLocaleDateString()}</div>
+      <div class="comp-card-actions">
+        <button class="btn" style="font-size:10.5px;height:22px;padding:2px 10px;">Open</button>
+      </div>`;
+    card.querySelector(".btn").addEventListener("click", (e) => { e.stopPropagation(); openComponent(comp); });
+    card.addEventListener("click", () => openComponent(comp));
+    list.appendChild(card);
+  });
+}
+
+function openComponent(comp) {
+  document.getElementById("comp-list-view").style.display = "none";
+  const rv = document.getElementById("comp-runner-view");
+  rv.style.display = "flex";
+  document.getElementById("comp-runner-title").textContent = comp.name;
+
+  const code = comp.code
+    .split("__COMPONENT_ID__").join(comp.id)
+    .split("__SNAPSHOT__").join(encodeURIComponent(JSON.stringify(snapshot)));
+
+  const iframe = document.getElementById("comp-iframe");
+  iframe.srcdoc = code;
+  iframe._activeCompId = comp.id;
+
+  iframe.onload = () => {
+    try { iframe.contentWindow.postMessage({ type:"snapshot", snapshot }, "*"); } catch(_e) {}
+  };
+}
+
+window.addEventListener("message", (e) => {
+  if (!e.data || e.data.type !== "component-actions") return;
+  const iframe = document.getElementById("comp-iframe");
+  if (e.data.componentId !== iframe._activeCompId) return;
+  const actions = e.data.actions || [];
+  if (!actions.length) return;
+  pending = [...pending, ...actions];
+  const applyBtn = document.getElementById("apply-btn");
+  applyBtn.style.display = "";
+  applyBtn.style.animation = "none"; applyBtn.offsetHeight; applyBtn.style.animation = "";
+  const compName = document.getElementById("comp-runner-title").textContent;
+  const summary  = actions.map(a => a.type.replace(/_/g," ")).join(", ");
+  addBubble("assistant", `Component "${compName}" queued: ${summary}`, null);
+  turns.push({ role:"assistant", content:`Component queued: ${summary}` });
+  switchTab("chat");
+});
+
+document.getElementById("comp-back-btn").addEventListener("click", () => {
+  const iframe = document.getElementById("comp-iframe");
+  iframe.srcdoc = ""; iframe._activeCompId = null;
+  document.getElementById("comp-runner-view").style.display = "none";
+  document.getElementById("comp-list-view").style.display = "flex";
+  renderComponentList();
+});
+
+document.getElementById("comp-delete-btn").addEventListener("click", () => {
+  const name = document.getElementById("comp-runner-title").textContent;
+  const comp = componentStore.find(c => c.name === name);
+  if (!comp || !confirm(`Delete "${comp.name}"?`)) return;
+  componentStore = componentStore.filter(c => c.id !== comp.id);
+  pendingComponentOp = { type:"delete", id:comp.id, name:comp.name, description:comp.description, code:comp.code };
+  document.getElementById("comp-back-btn").click();
+});
+
+// =============================================================================
+// /slash command detection
+// =============================================================================
+
+function detectSlashCommand(input) {
+  const m = input.match(/^\/([a-z-]+)\s*([\s\S]*)/);
+  return m ? { cmd: m[1], args: m[2].trim() } : null;
+}
+
+// Intercept send() for slash commands
+const _originalSend = send;
+async function send() {
+  const input = document.getElementById("prompt");
+  const text  = input.value.trim();
+  if (!text) return;
+  const slash = detectSlashCommand(text);
+  if (slash) {
+    input.value = "";
+    addBubble("user", text);
+    turns.push({ role:"user", content:text });
+    if (slash.cmd === "create-component") {
+      await handleCreateComponent(slash.args);
+    } else {
+      addBubble("error", `Unknown command: /${slash.cmd}`);
+    }
+    return;
+  }
+  await _originalSend();
+}
+
+// =============================================================================
+// Component builder
+// =============================================================================
+
+async function handleCreateComponent(description) {
+  if (!description) {
+    addBubble("error", "Usage: /create-component <what you want it to do>");
+    return;
+  }
+  const box = document.getElementById("messages");
+  const building = document.createElement("div");
+  building.className = "comp-building";
+  building.innerHTML = '<div class="comp-spinner"></div><span>Building component\u2026</span>';
+  box.appendChild(building);
+  box.scrollTop = box.scrollHeight;
+
+  let result;
+  try { result = await fetchComponentFromLLM(description); }
+  catch(e) { building.remove(); addBubble("error", "Build failed: " + e.message); return; }
+  building.remove();
+
+  if (!result || !result.code) { addBubble("error", "LLM returned invalid component. Try rephrasing."); return; }
+
+  const now = new Date().toISOString();
+  const comp = {
+    id:          Math.random().toString(36).slice(2,10),
+    name:        result.name || "Untitled Component",
+    description: result.description || description,
+    code:        result.code,
+    createdAt:   now,
+    updatedAt:   now,
+  };
+  componentStore.push(comp);
+  pendingComponentOp = { type:"save", id:comp.id, name:comp.name, description:comp.description, code:comp.code };
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble assistant";
+  bubble.style.cssText = "border-color:hsl(140,35%,25%);background:hsl(140,20%,12%);";
+  bubble.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:hsl(140,50%,55%);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">\u2713 Component Created</div>
+    <div style="font-size:12px;font-weight:500;margin-bottom:2px;">${comp.name}</div>
+    <div style="font-size:11px;color:var(--dim);">${comp.description}</div>
+    <div style="margin-top:8px;">
+      <button class="btn" style="font-size:10.5px;height:22px;padding:2px 10px;">View in Components &rarr;</button>
+    </div>`;
+  bubble.querySelector(".btn").addEventListener("click", () => switchTab("components"));
+  box.appendChild(bubble);
+  box.scrollTop = box.scrollHeight;
+  turns.push({ role:"assistant", content:`Component created: ${comp.name} — ${comp.description}` });
+}
+
+async function fetchComponentFromLLM(description) {
+  const activeModel = cfg.models.find(m => m.id === cfg.activeModelId) ?? cfg.models[0];
+  const provider    = activeModel?.provider || "anthropic";
+  const sys         = buildComponentSystemPrompt(description);
+  const userMsg     = `Build this component: ${description}`;
+  let raw = "";
+
+  if (provider === "anthropic") {
+    if (!cfg.anthropicApiKey) throw new Error("No Anthropic API key");
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json","anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-calls":"true","x-api-key":cfg.anthropicApiKey },
+      body: JSON.stringify({ model:activeModel.id, max_tokens:4096, system:sys,
+        messages:[{ role:"user", content:userMsg }] })
+    });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    const d = await r.json();
+    raw = d.content.filter(b => b.type==="text").map(b => b.text).join("");
+  } else {
+    const key = provider==="openai" ? cfg.openaiApiKey
+              : provider==="gemini" ? cfg.geminiApiKey
+              : (cfg.anthropicApiKey || cfg.openaiApiKey);
+    const ep  = provider==="openai"  ? "https://api.openai.com/v1/chat/completions"
+              : provider==="gemini"  ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+              : provider==="ollama"  ? (cfg.ollamaEndpoint||"http://localhost:11434").replace(/\/$/,"")+"/api/chat"
+              : cfg.customEndpoint + "/chat/completions";
+    if (!key && provider !== "ollama") throw new Error(`No API key for ${provider}`);
+    const body = provider==="ollama"
+      ? { model:cfg.ollamaModel||"llama3", stream:false, system:sys, messages:[{role:"user",content:userMsg}] }
+      : { model:activeModel.id, max_tokens:4096, response_format:{type:"json_object"},
+          messages:[{role:"system",content:sys},{role:"user",content:userMsg}] };
+    const r = await fetch(ep, { method:"POST",
+      headers:{ "Content-Type":"application/json", ...(key?{Authorization:`Bearer ${key}`}:{}) },
+      body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    const d = await r.json();
+    raw = provider==="ollama" ? d.message?.content||"" : d.choices?.[0]?.message?.content||"";
+  }
+
+  const clean = raw.replace(/^```json\s*/i,"").replace(/```\s*$/,"").trim();
+  try { return JSON.parse(clean); } catch {
+    const m = raw.match(/\{[\s\S]*"code"[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error("Could not parse component JSON");
+  }
+}
+
+function buildComponentSystemPrompt(description) {
+  const tracks = snapshot.tracks.map(t => `"${t.name}" (${t.type})`).join(", ");
+  return `You are a UI component builder for Q, an Ableton Live extension.
+Return ONLY a JSON object — no prose, no markdown:
+{ "name": "...", "description": "...", "code": "<full HTML>" }
+
+## Ableton web components (CDN)
+<link rel="stylesheet" href="https://unpkg.com/ableton-web-components/dist/ableton-web-components.css">
+<script type="module" src="https://unpkg.com/ableton-web-components"><\/script>
+Available: <able-dial value min max step default decimals label unit accent triangle bipolar hide-name hide-value>
+Events: dial.addEventListener("input", e => e.detail.value)  // while dragging
+        dial.addEventListener("change", e => e.detail.value) // on release
+For sliders: <input type="range"> with CSS vars. For buttons: <button>.
+
+## CSS vars
+--bg #222; --text hsl(0,0%,71%); --dim hsl(0,0%,45%); --accent hsl(31,100%,67%);
+--border hsl(0,0%,9%); --input-bg hsl(0,0%,11%); --r 3px;
+Also all --able-* variables from ableton-web-components.
+
+## Receiving session state
+let snapshot = JSON.parse(decodeURIComponent("__SNAPSHOT__"));
+window.addEventListener("message", e => { if(e.data.type==="snapshot") snapshot=e.data.snapshot; });
+
+## Sending actions to Q
+try {
+  window.parent.postMessage({ type:"component-actions", componentId:"__COMPONENT_ID__",
+    actions:[...] }, "*");
+} catch(_e) { console.log("dev mode - actions:", actions); }
+
+## Action types
+set_tempo(bpm), mute_track(trackName,muted), solo_track(trackName,soloed),
+arm_track(trackName,armed), rename_track(trackName,newName),
+set_device_param(trackName,deviceName,paramName,value),
+insert_device(trackName,deviceName,index), delete_device(trackName,deviceName),
+create_midi_track(name?), create_audio_track(name?), delete_track(trackName),
+execute_js(code,description) — for loops, warp data, bulk ops
+
+## Current session
+Tracks: ${tracks}
+Tempo: ${snapshot.tempo} BPM
+
+## Rules
+- Fully self-contained HTML. No external resources except the CDN above.
+- Compact: ~360px wide, under 500px tall.
+- Initialize snapshot from __SNAPSHOT__. Use __COMPONENT_ID__ in postMessage.
+- Use execute_js for: slicing silence, reading clip data, loops over tracks.
+- Build EXACTLY what was described.`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════

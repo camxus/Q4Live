@@ -82,14 +82,24 @@ export interface Intent {
   answer?: string;
 }
 
+// ── Component operation ───────────────────────────────────────────────────
+export interface ComponentOp {
+  type: "save" | "update" | "delete";
+  id?: string;
+  name: string;
+  description: string;
+  code: string;
+}
+
 // ── Dialog message ─────────────────────────────────────────────────────────
 export interface DialogResult {
-  intents: Intent[];          // router output — one per LLM response
-  rawActions: Action[];       // resolved, validated, ready to execute
+  intents: Intent[];
+  rawActions: Action[];
   history: Turn[];
   model: string;
   settings?: import("./settings.js").Settings;
   jsResult?: { ok: boolean; result: unknown; logs: string[]; description: string };
+  componentOp?: ComponentOp;
   undo?: true;
 }
 
