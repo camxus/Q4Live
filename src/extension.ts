@@ -78,7 +78,7 @@ export function activate(activation: ActivationContext): void {
     try {
       raw = await api.ui.showModalDialog(url, 760, 600);
     } catch (e) {
-      console.error("[Q] Dialog error:", e);
+      console.warn("[Q] Dialog failed to open:", e);
       return null;
     }
 

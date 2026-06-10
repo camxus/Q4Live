@@ -91,6 +91,7 @@ export class Session {
       const data = JSON.parse(raw) as JournalData;
       this.history = data.history ?? [];
       this.model = data.model ?? DEFAULT_MODEL;
+      this.lastJsResult = data.lastJsResult ?? null;
     } catch {
       // Corrupt journal — start fresh
       this.history = [];

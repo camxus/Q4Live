@@ -93,7 +93,6 @@ export interface ComponentOp {
 
 // ── Dialog message ─────────────────────────────────────────────────────────
 export interface DialogResult {
-  intents: Intent[];
   rawActions: Action[];
   history: Turn[];
   model: string;

@@ -330,6 +330,31 @@
       border-top-color:hsl(260,60%,60%); border-radius:50%;
       animation:comp-spin 800ms linear infinite; }
 
+    /* ── Component hints strip ───────────────────────────────── */
+    .comp-hint-item { position:absolute; font-size:10.5px; color:var(--dim);
+      font-style:italic; font-family:var(--mono); text-align:center;
+      opacity:0; transition:opacity 600ms ease; pointer-events:none;
+      white-space:nowrap; }
+    .comp-hint-item.active { opacity:1; }
+
+    /* ── Autocomplete / command palette ─────────────────────────── */
+    #autocomplete { display:none; position:absolute; bottom:100%; left:0; right:0;
+      background:var(--bg-2); border:1px solid var(--dim); border-bottom:none;
+      border-radius:var(--r) var(--r) 0 0; max-height:200px; overflow-y:auto; z-index:20; }
+    #autocomplete.open { display:block; animation:slide-down 140ms ease both; }
+    .ac-item { display:flex; align-items:baseline; gap:8px; padding:6px 10px;
+      cursor:pointer; font-size:11px; border-bottom:1px solid var(--border); }
+    .ac-item:hover, .ac-item.selected { background:var(--bg-3); }
+    .ac-item:last-child { border-bottom:none; }
+    .ac-cmd  { color:var(--accent); font-family:var(--mono); font-size:11px; min-width:160px; }
+    .ac-desc { color:var(--dim); font-size:10.5px; }
+    .ac-cat  { padding:3px 10px; font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.07em; color:hsl(0,0%,32%); background:var(--bg-4);
+      border-bottom:1px solid var(--border); }
+    /* hint text */
+    #prompt-hint { position:absolute; bottom:6px; right:8px; font-size:9.5px;
+      color:hsl(0,0%,30%); pointer-events:none; font-family:var(--mono); }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 1ms !important;
@@ -344,12 +369,62 @@
     #welcome {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
+      align-items: center; justify-content: flex-start;
       background: var(--bg);
       z-index: 10;
-      padding: 0 32px 40px;
-      gap: 28px;
+      padding: 0 24px 24px;
+      gap: 0;
+      overflow-y: auto;
+      /* needed so flex children with flex-grow work correctly */
+      height: 100%;
       transition: opacity 320ms ease;
+    }
+    /* Hero: vertically centered in at least 60% of the viewport height */
+    #welcome-hero {
+      width: 100%; max-width: 560px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px;
+      padding: 0;
+      /* flex-grow pushes dashboard down; flex-basis gives it vertical space */
+      flex: 1 0 auto;
+      min-height: 340px;
+    }
+    /* Dashboard grid below the input */
+    #welcome-dashboard {
+      width: 100%; max-width: 560px;
+      display: flex; flex-direction: column; gap: 10px;
+      animation: welcome-drop 500ms 280ms cubic-bezier(0.22,0.61,0.36,1) both;
+      padding-bottom: 24px;
+    }
+    .dash-section-title {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .09em; color: hsl(0,0%,32%);
+      padding-bottom: 5px; border-bottom: 1px solid var(--border);
+    }
+    .dash-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    }
+    .dash-card {
+      background: var(--bg-2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 9px 11px; cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .dash-card:hover { border-color: var(--dim); background: var(--bg-3); }
+    .dash-card-name { font-size: 11.5px; font-weight: 500; color: var(--bright); }
+    .dash-card-desc { font-size: 10px; color: var(--dim); line-height: 1.45; }
+    .dash-card-meta { font-size: 9.5px; color: hsl(0,0%,30%); font-family: var(--mono); margin-top: 2px; }
+    /* "new component" card */
+    .dash-card-new {
+      border-style: dashed; color: var(--dim);
+      align-items: center; justify-content: center;
+      flex-direction: row; gap: 6px; font-size: 11px;
+    }
+    .dash-card-new:hover { border-color: var(--accent-d); color: var(--accent); }
+    .dash-empty-hint {
+      text-align: center; color: hsl(0,0%,32%); font-size: 11px;
+      font-style: italic; padding: 12px 0;
     }
     #welcome.fade-out {
       opacity: 0;
@@ -374,7 +449,7 @@
     .welcome-tagline {
       font-size: 13px;
       color: var(--dim);
-      margin-top: -20px;
+      margin-top: -16px;
       animation: welcome-drop 500ms 80ms cubic-bezier(0.22,0.61,0.36,1) both;
     }
 
@@ -382,17 +457,19 @@
     .welcome-examples {
       height: 22px;
       position: relative;
+      width: 100%; max-width: 440px;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
       animation: welcome-drop 500ms 160ms cubic-bezier(0.22,0.61,0.36,1) both;
     }
     .welcome-example {
       position: absolute;
-      top: 0;
+      left: 0; right: 0;
+      text-align: center;
       font-size: 13px;
       color: var(--dim);
-      text-align: center;
       opacity: 0;
       transition: opacity 600ms ease;
       white-space: nowrap;
@@ -426,7 +503,7 @@
       display: flex;
       gap: 7px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       animation: welcome-drop 500ms 240ms cubic-bezier(0.22,0.61,0.36,1) both;
     }
     #welcome-prompt {
@@ -568,18 +645,24 @@
 
 <!-- Welcome screen -->
 <div id="welcome">
-  <div class="welcome-q">Q</div>
-  <div class="welcome-tagline">Hi, I'm Q — tell me what to do in your session</div>
+  <div id="welcome-hero">
+    <div class="welcome-q">Q</div>
+    <div class="welcome-tagline">Hi, I'm Q — tell me what to do in your session</div>
 
-  <div class="welcome-examples" id="welcome-examples">
-    <!-- populated by JS -->
+    <div class="welcome-examples" id="welcome-examples">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="welcome-input-row">
+      <input id="welcome-prompt" type="text"
+        placeholder="What would you like to do?" autocomplete="off" spellcheck="false">
+      <button id="welcome-send">Go</button>
+      <button class="welcome-settings-btn" id="welcome-settings-btn">Settings</button>
+    </div>
   </div>
 
-  <div class="welcome-input-row">
-    <input id="welcome-prompt" type="text"
-      placeholder="What would you like to do?" autocomplete="off" spellcheck="false">
-    <button id="welcome-send">Go</button>
-    <button class="welcome-settings-btn" id="welcome-settings-btn">Settings</button>
+  <div id="welcome-dashboard">
+    <!-- populated by renderWelcomeDashboard() -->
   </div>
 </div>
 
@@ -602,9 +685,15 @@
 <div id="chat-panel">
   <div id="messages"></div>
   <div id="inputrow">
-    <textarea id="prompt" placeholder="Tell Q what to do… (Enter to send, Shift+Enter newline)"></textarea>
-    <button class="btn primary" id="send-btn">Send</button>
-    <button class="btn" id="apply-btn">Apply ✓</button>
+    <div id="prompt-wrap" style="position:relative;flex:1;display:flex;flex-direction:column;">
+      <div id="autocomplete"></div>
+      <textarea id="prompt" placeholder="Tell Q what to do… or type / for commands" autocomplete="off" spellcheck="false"></textarea>
+      <div id="prompt-hint"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <button class="btn primary" id="send-btn">Send</button>
+      <button class="btn" id="apply-btn" style="display:none;">Apply ✓</button>
+    </div>
   </div>
 </div>
 
@@ -615,8 +704,8 @@
     <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
       <span style="font-size:12px;font-weight:500;">Components</span>
       <span id="comp-count" style="font-size:10px;color:var(--dim);"></span>
-      <span style="margin-left:auto;font-size:10px;color:var(--dim);font-style:italic;">type /create-component in chat</span>
     </div>
+    <div id="comp-hints" style="position:relative;height:28px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg-4);display:flex;align-items:center;justify-content:center;overflow:hidden;"></div>
     <div id="comp-list" style="overflow-y:auto;flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>
   </div>
   <div id="comp-runner-view" style="display:none;flex-direction:column;height:100%;">
@@ -753,7 +842,12 @@ const { snapshot, history, settings: initSettings, lastJsResult, components: ini
           mixpanelToken: "", posthogApiKey: "", posthogHost: "",
         },
         lastJsResult: null,
-        components: [],
+        components: [
+          { id:"c1", name:"Silence Slicer", description:"Remove silent regions from tracks with a threshold slider", code:"", createdAt:"2026-06-05T10:00:00Z", updatedAt:"2026-06-05T10:00:00Z" },
+          { id:"c2", name:"Tempo Tap", description:"Tap to set BPM with nudge controls and display", code:"", createdAt:"2026-06-04T14:30:00Z", updatedAt:"2026-06-04T14:30:00Z" },
+          { id:"c3", name:"Track Colour Palette", description:"Assign colours to all tracks at once using presets", code:"", createdAt:"2026-06-03T09:15:00Z", updatedAt:"2026-06-03T09:15:00Z" },
+          { id:"c4", name:"Clip Batch Rename", description:"Rename all clips on selected tracks with a prefix", code:"", createdAt:"2026-06-02T16:00:00Z", updatedAt:"2026-06-02T16:00:00Z" },
+        ],
       };
     }
   })());
@@ -769,6 +863,7 @@ let pendingComponentOp = null;  // set when user creates/edits/deletes a compone
 // When ambiguity is detected we stash the full action batch here.
 // On candidate selection we patch the unresolved slot and apply directly.
 let pendingAmbiguous = null;
+let exTimer = null;   // welcome screen example-cycling timer
 // { actions: Action[], ambiguousAction: Action, field: "trackName", original: string }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -818,6 +913,8 @@ document.getElementById("model-select").addEventListener("change", e => {
 // ═══════════════════════════════════════════════════════════════════════
 // Tab switching
 // ═══════════════════════════════════════════════════════════════════════
+let compHintTimer = null;
+
 function switchTab(tabName) {
   document.querySelectorAll(".tab").forEach(t =>
     t.classList.toggle("active", t.dataset.tab === tabName)
@@ -825,8 +922,40 @@ function switchTab(tabName) {
   document.getElementById("chat-panel").classList.toggle("hidden", tabName !== "chat");
   document.getElementById("settings-panel").classList.toggle("hidden", tabName !== "settings");
   document.getElementById("components-panel").classList.toggle("hidden", tabName !== "components");
-  if (tabName === "settings")    renderSettings();
-  if (tabName === "components")  renderComponentList();
+  if (tabName === "settings")   { renderSettings(); stopCompHints(); }
+  if (tabName === "components") { renderComponentList(); startCompHints(); }
+  if (tabName === "chat")       { stopCompHints(); }
+}
+
+function startCompHints() {
+  const box = document.getElementById("comp-hints");
+  if (!box) return;
+  box.innerHTML = "";
+
+  COMP_HINTS.forEach(h => {
+    const el = document.createElement("div");
+    el.className = "comp-hint-item";
+    el.textContent = h;
+    box.appendChild(el);
+  });
+
+  let idx = 0;
+  const els = box.querySelectorAll(".comp-hint-item");
+
+  requestAnimationFrame(() => {
+    if (els[0]) els[0].classList.add("active");
+  });
+
+  compHintTimer = setInterval(() => {
+    const all = box.querySelectorAll(".comp-hint-item");
+    all[idx].classList.remove("active");
+    idx = (idx + 1) % all.length;
+    all[idx].classList.add("active");
+  }, 2600);
+}
+
+function stopCompHints() {
+  if (compHintTimer) { clearInterval(compHintTimer); compHintTimer = null; }
 }
 
 document.querySelectorAll(".tab").forEach(tab => {
@@ -1644,10 +1773,10 @@ document.getElementById("prompt").addEventListener("keydown", e => {
   if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
 });
 document.getElementById("apply-btn").addEventListener("click", () => {
-  closeWithResult({ rawActions:pending, intents:[], history:turns, model:cfg.activeModelId, settings:cfg });
+  closeWithResult({ rawActions:pending, history:turns, model:cfg.activeModelId, settings:cfg });
 });
 document.getElementById("undo-btn").addEventListener("click", () => {
-  closeWithResult({ rawActions:[], intents:[], history:turns, model:cfg.activeModelId, settings:cfg, undo:true });
+  closeWithResult({ rawActions:[], history:turns, model:cfg.activeModelId, settings:cfg, undo:true });
 });
 document.getElementById("clear-btn").addEventListener("click", () => {
   turns=[]; pending=[];
@@ -1656,13 +1785,14 @@ document.getElementById("clear-btn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => {
   if (e.key==="Escape")
-    closeWithResult({ rawActions:[], intents:[], history:turns, model:cfg.activeModelId, settings:cfg });
+    closeWithResult({ rawActions: [], history:turns, model:cfg.activeModelId, settings:cfg });
 });
 
 // ═══════════════════════════════════════════════════════════════════════
 // Welcome screen
 // ═══════════════════════════════════════════════════════════════════════
 const EXAMPLES = [
+  // Session control
   'mute the kick and solo the bass',
   'set tempo to 128 and rename this track Drums',
   'add a compressor and reverb to vocals',
@@ -1675,7 +1805,115 @@ const EXAMPLES = [
   'add a cue point at bar 9 called Drop',
   'duplicate the drum track',
   'set the reverb decay on vocals to 0.8',
+  // Component creation
+  '/create-component slice silence from selected tracks with a threshold dial',
+  '/create-component tap-tempo with BPM display and nudge buttons',
+  '/create-component batch rename all clips using a prefix input',
+  '/create-component colour-code all tracks by type with one click',
+  '/create-component EQ preset loader for the vocal chain',
+  '/create-component pack all gaps across every track at once',
 ];
+
+// Component tab hints — shown as cycling strip inside the Components panel
+const COMP_HINTS = [
+  "/create-component <describe what you want>",
+  "/list-components — see all saved components",
+  "/open-component <name> — launch a component",
+  "/delete-component <name> — remove a component",
+  "Components talk to Live via Q's action pipeline",
+  "Use able-dial for rotary controls in your component",
+  "execute_js lets components run any SDK operation",
+];
+
+function renderWelcomeDashboard() {
+  const dash = document.getElementById("welcome-dashboard");
+  if (!dash) return;
+  dash.innerHTML = "";
+
+  // ── Components section ─────────────────────────────────────────────
+  const secTitle = document.createElement("div");
+  secTitle.className = "dash-section-title";
+  secTitle.textContent = componentStore.length
+    ? `Components (${componentStore.length})`
+    : "Components";
+  dash.appendChild(secTitle);
+
+  const grid = document.createElement("div");
+  grid.className = "dash-grid";
+
+  if (componentStore.length === 0) {
+    // Empty state
+    const empty = document.createElement("div");
+    empty.className = "dash-empty-hint";
+    empty.style.gridColumn = "1 / -1";
+    empty.innerHTML = 'No components yet.<br>Type <span style="font-family:var(--mono);color:var(--dim)">/create-component</span> to build one.';
+    grid.appendChild(empty);
+  } else {
+    // Show up to 6 component cards
+    const visible = componentStore.slice(0, 6);
+    visible.forEach(comp => {
+      const card = document.createElement("div");
+      card.className = "dash-card";
+      const nameEl = document.createElement("div");
+      nameEl.className = "dash-card-name";
+      nameEl.textContent = comp.name;
+      card.appendChild(nameEl);
+      const descEl = document.createElement("div");
+      descEl.className = "dash-card-desc";
+      descEl.textContent = comp.description;
+      card.appendChild(descEl);
+      const metaEl = document.createElement("div");
+      metaEl.className = "dash-card-meta";
+      metaEl.textContent = new Date(comp.createdAt).toLocaleDateString();
+      card.appendChild(metaEl);
+      card.addEventListener("click", () => {
+        // Dismiss welcome, switch to components, open component
+        clearInterval(exTimer);
+        stopCompHints();
+        welcome.classList.add("gone");
+        switchTab("components");
+        openComponent(comp);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  // Always show "+ New component" card
+  const newCard = document.createElement("div");
+  newCard.className = "dash-card dash-card-new";
+  newCard.innerHTML = `<span style="font-size:14px;line-height:1;">+</span><span>New component</span>`;
+  newCard.addEventListener("click", () => {
+    clearInterval(exTimer);
+    welcome.classList.add("gone");
+    // Switch to chat tab with /create-component pre-filled
+    switchTab("chat");
+    const prompt = document.getElementById("prompt");
+    prompt.value = "/create-component ";
+    prompt.focus();
+    updatePromptHint("/create-component ");
+    renderAutocomplete("/create-component ");
+  });
+  grid.appendChild(newCard);
+
+  // If more than 6, show "View all"
+  if (componentStore.length > 6) {
+    const viewAll = document.createElement("div");
+    viewAll.style.cssText = "grid-column:1/-1;text-align:center;padding:4px 0;";
+    const btn = document.createElement("button");
+    btn.className = "tb-btn";
+    btn.style.cssText = "font-size:10px;margin:0 auto;display:block;";
+    btn.textContent = `View all ${componentStore.length} components →`;
+    btn.addEventListener("click", () => {
+      clearInterval(exTimer);
+      welcome.classList.add("gone");
+      switchTab("components");
+    });
+    viewAll.appendChild(btn);
+    grid.appendChild(viewAll);
+  }
+
+  dash.appendChild(grid);
+}
 
 function initWelcome() {
   const welcome    = document.getElementById("welcome");
@@ -1689,6 +1927,8 @@ function initWelcome() {
     welcome.classList.add("gone");
     return;
   }
+
+  renderWelcomeDashboard();
 
   // Settings button — hide welcome immediately, switch to settings tab
   wSettings.addEventListener("click", (e) => {
@@ -1707,7 +1947,7 @@ function initWelcome() {
   });
 
   let exIdx = 0;
-  let exTimer = null;
+  exTimer = null;
   const allExamples = () => exBox.querySelectorAll(".welcome-example");
 
   // Defer first .active by one rAF so browser paints opacity:0 first,
@@ -1788,14 +2028,29 @@ function renderComponentList() {
   componentStore.forEach(comp => {
     const card = document.createElement("div");
     card.className = "comp-card";
-    card.innerHTML = `
-      <div class="comp-card-name">${comp.name}</div>
-      <div class="comp-card-desc">${comp.description}</div>
-      <div class="comp-card-meta">${new Date(comp.createdAt).toLocaleDateString()}</div>
-      <div class="comp-card-actions">
-        <button class="btn" style="font-size:10.5px;height:22px;padding:2px 10px;">Open</button>
-      </div>`;
-    card.querySelector(".btn").addEventListener("click", (e) => { e.stopPropagation(); openComponent(comp); });
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "comp-card-name";
+    nameDiv.textContent = comp.name;
+    card.appendChild(nameDiv);
+    const descDiv = document.createElement("div");
+    descDiv.className = "comp-card-desc";
+    descDiv.textContent = comp.description;
+    card.appendChild(descDiv);
+    const metaDiv = document.createElement("div");
+    metaDiv.className = "comp-card-meta";
+    metaDiv.textContent = new Date(comp.createdAt).toLocaleDateString();
+    card.appendChild(metaDiv);
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "comp-card-actions";
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.style.fontSize = "10.5px";
+    btn.style.height = "22px";
+    btn.style.padding = "2px 10px";
+    btn.textContent = "Open";
+    actionsDiv.appendChild(btn);
+    card.appendChild(actionsDiv);
+    btn.addEventListener("click", (e) => { e.stopPropagation(); openComponent(comp); });
     card.addEventListener("click", () => openComponent(comp));
     list.appendChild(card);
   });
@@ -1821,6 +2076,7 @@ function openComponent(comp) {
 }
 
 window.addEventListener("message", (e) => {
+  const ALLOWED_ORIGINS = ["null", window.location.origin];
   if (!e.data || e.data.type !== "component-actions") return;
   const iframe = document.getElementById("comp-iframe");
   if (e.data.componentId !== iframe._activeCompId) return;
@@ -1854,183 +2110,280 @@ document.getElementById("comp-delete-btn").addEventListener("click", () => {
   document.getElementById("comp-back-btn").click();
 });
 
+
 // =============================================================================
-// /slash command detection
+// Command registry
+// =============================================================================
+
+const COMMANDS = [
+  { cmd:"create-component", args:"<description>", desc:"Build a new mini-app component with LLM",
+    category:"Components",
+    examples:["/create-component slice silence from tracks with threshold slider",
+              "/create-component dial-based EQ for the vocal chain",
+              "/create-component batch rename all clips with a prefix input"],
+    run:(args) => handleCreateComponent(args) },
+  { cmd:"list-components", args:"", desc:"Show all saved components",
+    category:"Components", examples:["/list-components"],
+    run:() => handleListComponents() },
+  { cmd:"open-component", args:"<name>", desc:"Open a component by name",
+    category:"Components", examples:["/open-component Silence Slicer"],
+    run:(args) => handleOpenComponent(args) },
+  { cmd:"delete-component", args:"<name>", desc:"Delete a component by name",
+    category:"Components", examples:["/delete-component Tempo Tap"],
+    run:(args) => handleDeleteComponent(args) },
+  { cmd:"clear", args:"", desc:"Clear conversation history",
+    category:"Session", examples:["/clear"],
+    run:() => {
+      turns=[]; pending=[];
+      document.getElementById("messages").innerHTML="";
+      document.getElementById("apply-btn").style.display="none";
+      addBubble("assistant","History cleared."); } },
+  { cmd:"undo", args:"", desc:"Undo the last conversation turn",
+    category:"Session", examples:["/undo"],
+    run:() => closeWithResult({rawActions:[],history:turns,model:cfg.activeModelId,settings:cfg,undo:true}) },
+  { cmd:"apply", args:"", desc:"Apply all pending actions to Live",
+    category:"Session", examples:["/apply"],
+    run:() => {
+      if(!pending.length){addBubble("error","No pending actions.");return;}
+      closeWithResult({rawActions:pending,history:turns,model:cfg.activeModelId,settings:cfg}); } },
+  { cmd:"help", args:"[command]", desc:"Show available commands",
+    category:"Help", examples:["/help","/help create-component"],
+    run:(args) => handleHelp(args) },
+];
+
+function handleListComponents() {
+  if(!componentStore.length){addBubble("assistant","No components yet. Use /create-component to build one.");return;}
+  const box=document.getElementById("messages");
+  const d=document.createElement("div"); d.className="bubble assistant";
+  const items=componentStore.map((comp,i)=>{
+    const row=document.createElement("div");
+    row.style.cssText="padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;";
+    const num=document.createElement("span");
+    num.style.cssText="font-size:10px;color:var(--dim);font-family:var(--mono);min-width:18px;";
+    num.textContent=`${i+1}.`; row.appendChild(num);
+    const inner=document.createElement("div");
+    inner.style.cssText="flex:1;";
+    const nm=document.createElement("div");
+    nm.style.cssText="font-size:11.5px;font-weight:500;";
+    nm.textContent=comp.name; inner.appendChild(nm);
+    const ds=document.createElement("div");
+    ds.style.cssText="font-size:10px;color:var(--dim);";
+    ds.textContent=comp.description; inner.appendChild(ds);
+    row.appendChild(inner);
+    const ob=document.createElement("button");
+    ob.className="btn";
+    ob.style.cssText="font-size:10px;height:20px;padding:1px 8px;";
+    ob.textContent="Open";
+    ob.addEventListener("click",()=>{openComponent(componentStore.find(c=>c.id===comp.id));switchTab("components");});
+    row.appendChild(ob);
+    return row;
+  }).map(r=>r.outerHTML).join("");
+  d.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">${componentStore.length} component${componentStore.length>1?"s":""}</div>${items}`;
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+  turns.push({role:"assistant",content:`Listed ${componentStore.length} components.`});
+}
+
+function handleOpenComponent(name) {
+  if(!name){addBubble("error","Usage: /open-component <name>");return;}
+  const comp=componentStore.find(c=>c.name.toLowerCase()===name.toLowerCase())
+           ||componentStore.find(c=>c.name.toLowerCase().includes(name.toLowerCase()));
+  if(!comp){addBubble("error",`No component matching "${name}"`);return;}
+  switchTab("components"); openComponent(comp);
+  addBubble("assistant",`Opened: ${comp.name}`);
+  turns.push({role:"assistant",content:`Opened: ${comp.name}`});
+}
+
+function handleDeleteComponent(name) {
+  if(!name){addBubble("error","Usage: /delete-component <name>");return;}
+  const comp=componentStore.find(c=>c.name.toLowerCase()===name.toLowerCase())
+           ||componentStore.find(c=>c.name.toLowerCase().includes(name.toLowerCase()));
+  if(!comp){addBubble("error",`No component matching "${name}"`);return;}
+  componentStore=componentStore.filter(c=>c.id!==comp.id);
+  pendingComponentOp={type:"delete",id:comp.id,name:comp.name,description:comp.description,code:comp.code};
+  addBubble("assistant",`Deleted: ${comp.name}`);
+  turns.push({role:"assistant",content:`Deleted: ${comp.name}`});
+}
+
+function handleHelp(cmd) {
+  const box=document.getElementById("messages");
+  const d=document.createElement("div"); d.className="bubble assistant";
+  if(cmd) {
+    const def=COMMANDS.find(c=>c.cmd===cmd);
+    if(!def){addBubble("error",`Unknown command: /${cmd}`);return;}
+    d.innerHTML=`<div style="font-family:var(--mono);font-size:12px;color:var(--accent)">/${def.cmd} ${def.args}</div>
+      <div style="font-size:11px;color:var(--text);margin:4px 0 8px;">${def.desc}</div>
+      <div style="font-size:9.5px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Examples</div>
+      ${def.examples.map(e=>`<div style="font-family:var(--mono);font-size:10.5px;color:var(--dim);padding:2px 0;">${e}</div>`).join("")}`;
+  } else {
+    const byCategory={};
+    COMMANDS.forEach(c=>{(byCategory[c.category]=byCategory[c.category]||[]).push(c);});
+    const rows=Object.entries(byCategory).map(([cat,cmds])=>
+      `<div style="font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:8px 0 3px;">${cat}</div>`+
+      cmds.map(c=>`<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px solid var(--border);">
+        <span style="font-family:var(--mono);font-size:10.5px;color:var(--accent);min-width:170px;">/${c.cmd} <span style="color:var(--dim);">${c.args}</span></span>
+        <span style="font-size:10.5px;color:var(--dim);">${c.desc}</span></div>`).join("")
+    ).join("");
+    d.innerHTML=`<div style="font-weight:500;margin-bottom:6px;">Available commands — type /command in chat</div>${rows}`;
+  }
+  box.appendChild(d); box.scrollTop=box.scrollHeight;
+  turns.push({role:"assistant",content:cmd?`Help: /${cmd}`:"Listed commands."});
+}
+
+// =============================================================================
+// Autocomplete + command palette
+// =============================================================================
+
+let acSelectedIndex=-1, acItems=[];
+
+function getAcItems(text) {
+  if(!text.startsWith("/")) return [];
+  const q=text.slice(1).toLowerCase();
+  // Handle sub-arguments for name-taking commands
+  const nameMatch=q.match(/^(open-component|delete-component)\s+(.+)/);
+  if(nameMatch) {
+    return componentStore
+      .filter(c=>c.name.toLowerCase().includes(nameMatch[2]))
+      .map(c=>({type:"value",label:c.name,fill:`/${nameMatch[1]} ${c.name}`,desc:c.description}));
+  }
+  return COMMANDS.filter(c=>!q||c.cmd.startsWith(q))
+    .map(c=>({type:"cmd",label:`/${c.cmd}`,fill:`/${c.cmd} `,desc:c.desc,cmd:c}));
+}
+
+function renderAutocomplete(text) {
+  const ac=document.getElementById("autocomplete");
+  acItems=getAcItems(text); acSelectedIndex=-1;
+  if(!acItems.length||!text.startsWith("/")){ac.innerHTML="";ac.classList.remove("open");return;}
+  ac.innerHTML="";
+  let lastCat=null;
+  acItems.forEach((item,i)=>{
+    if(item.type==="cmd"&&item.cmd.category!==lastCat){
+      lastCat=item.cmd.category;
+      const cat=document.createElement("div"); cat.className="ac-cat";
+      cat.textContent=lastCat; ac.appendChild(cat);
+    }
+    const row=document.createElement("div"); row.className="ac-item"; row.dataset.index=i;
+    const cmdSpan=document.createElement("span");
+    cmdSpan.className="ac-cmd";
+    const labelText=document.createTextNode(item.label);
+    cmdSpan.appendChild(labelText);
+    if(item.type==="cmd"){
+      const argSpan=document.createElement("span");
+      argSpan.style.cssText="color:var(--dim);font-size:9.5px;";
+      argSpan.textContent=` ${item.cmd.args}`;
+      cmdSpan.appendChild(argSpan);
+    }
+    row.appendChild(cmdSpan);
+    const descSpan=document.createElement("span");
+    descSpan.className="ac-desc";
+    descSpan.textContent=item.desc;
+    row.appendChild(descSpan);
+    row.addEventListener("mousedown",e=>{e.preventDefault();applyAcItem(item);});
+    ac.appendChild(row);
+  });
+  ac.classList.add("open");
+}
+
+function applyAcItem(item) {
+  const p=document.getElementById("prompt");
+  p.value=item.fill; p.focus();
+  updatePromptHint(item.fill); renderAutocomplete(item.fill);
+}
+
+function updateAcSelection(dir) {
+  const rows=document.getElementById("autocomplete").querySelectorAll(".ac-item");
+  if(!rows.length) return;
+  rows[acSelectedIndex]?.classList.remove("selected");
+  acSelectedIndex=(acSelectedIndex+dir+rows.length)%rows.length;
+  rows[acSelectedIndex]?.classList.add("selected");
+  if(acItems[acSelectedIndex]) updatePromptHint(acItems[acSelectedIndex].fill);
+}
+
+function updatePromptHint(text) {
+  const hint=document.getElementById("prompt-hint");
+  const cmd=COMMANDS.find(c=>text===`/${c.cmd} `||text===`/${c.cmd}`);
+  hint.textContent=cmd&&cmd.args?cmd.args:"";
+}
+
+document.getElementById("prompt").addEventListener("input",e=>{
+  renderAutocomplete(e.target.value); updatePromptHint(e.target.value);
+});
+
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#prompt-wrap")){
+    const ac=document.getElementById("autocomplete");
+    ac.innerHTML=""; ac.classList.remove("open");
+  }
+});
+
+// =============================================================================
+// Input history (arrow up/down)
+// =============================================================================
+
+let historyIndex=-1, historyBuffer="";
+
+document.getElementById("prompt").addEventListener("keydown",e=>{
+  const ac=document.getElementById("autocomplete");
+  if(ac.classList.contains("open")){
+    if(e.key==="ArrowUp"){e.preventDefault();updateAcSelection(-1);return;}
+    if(e.key==="ArrowDown"){e.preventDefault();updateAcSelection(1);return;}
+    if((e.key==="Tab"||e.key==="Enter")&&acSelectedIndex>=0&&acItems[acSelectedIndex]){
+      e.preventDefault(); applyAcItem(acItems[acSelectedIndex]);
+      if(e.key==="Enter"&&acItems[acSelectedIndex].type==="cmd"&&!acItems[acSelectedIndex].cmd.args) void send();
+      return;
+    }
+    if(e.key==="Escape"){ac.innerHTML="";ac.classList.remove("open");return;}
+  }
+  if(!ac.classList.contains("open")){
+    const userTurns=turns.filter(t=>t.role==="user").map(t=>t.content);
+    if(e.key==="ArrowUp"&&userTurns.length){
+      e.preventDefault();
+      if(historyIndex===-1) historyBuffer=document.getElementById("prompt").value;
+      historyIndex=Math.min(historyIndex+1,userTurns.length-1);
+      document.getElementById("prompt").value=userTurns[userTurns.length-1-historyIndex]||"";
+      return;
+    }
+    if(e.key==="ArrowDown"){
+      if(historyIndex<=0){historyIndex=-1;document.getElementById("prompt").value=historyBuffer;return;}
+      e.preventDefault(); historyIndex--;
+      const ut=turns.filter(t=>t.role==="user").map(t=>t.content);
+      document.getElementById("prompt").value=ut[ut.length-1-historyIndex]||"";
+      return;
+    }
+  }
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();historyIndex=-1;void send();}
+});
+
+// =============================================================================
+// /slash command router (replaces original send listener on Enter)
 // =============================================================================
 
 function detectSlashCommand(input) {
-  const m = input.match(/^\/([a-z-]+)\s*([\s\S]*)/);
-  return m ? { cmd: m[1], args: m[2].trim() } : null;
+  const m=input.match(/^\/([a-z-]+)\s*([\s\S]*)/);
+  return m?{cmd:m[1],args:m[2].trim()}:null;
 }
 
-// Intercept send() for slash commands
-const _originalSend = send;
+const _origSend=send;
 async function send() {
-  const input = document.getElementById("prompt");
-  const text  = input.value.trim();
-  if (!text) return;
-  const slash = detectSlashCommand(text);
-  if (slash) {
-    input.value = "";
-    addBubble("user", text);
-    turns.push({ role:"user", content:text });
-    if (slash.cmd === "create-component") {
-      await handleCreateComponent(slash.args);
-    } else {
-      addBubble("error", `Unknown command: /${slash.cmd}`);
-    }
+  const input=document.getElementById("prompt");
+  const text=input.value.trim();
+  if(!text) return;
+  document.getElementById("autocomplete").innerHTML="";
+  document.getElementById("autocomplete").classList.remove("open");
+  document.getElementById("prompt-hint").textContent="";
+  const slash=detectSlashCommand(text);
+  if(slash){
+    input.value=""; historyIndex=-1;
+    addBubble("user",text);
+    turns.push({role:"user",content:text});
+    const def=COMMANDS.find(c=>c.cmd===slash.cmd);
+    if(def) await def.run(slash.args);
+    else addBubble("error",`Unknown command: /${slash.cmd} — type /help`);
     return;
   }
-  await _originalSend();
+  historyIndex=-1;
+  await _origSend();
 }
 
-// =============================================================================
-// Component builder
-// =============================================================================
-
-async function handleCreateComponent(description) {
-  if (!description) {
-    addBubble("error", "Usage: /create-component <what you want it to do>");
-    return;
-  }
-  const box = document.getElementById("messages");
-  const building = document.createElement("div");
-  building.className = "comp-building";
-  building.innerHTML = '<div class="comp-spinner"></div><span>Building component\u2026</span>';
-  box.appendChild(building);
-  box.scrollTop = box.scrollHeight;
-
-  let result;
-  try { result = await fetchComponentFromLLM(description); }
-  catch(e) { building.remove(); addBubble("error", "Build failed: " + e.message); return; }
-  building.remove();
-
-  if (!result || !result.code) { addBubble("error", "LLM returned invalid component. Try rephrasing."); return; }
-
-  const now = new Date().toISOString();
-  const comp = {
-    id:          Math.random().toString(36).slice(2,10),
-    name:        result.name || "Untitled Component",
-    description: result.description || description,
-    code:        result.code,
-    createdAt:   now,
-    updatedAt:   now,
-  };
-  componentStore.push(comp);
-  pendingComponentOp = { type:"save", id:comp.id, name:comp.name, description:comp.description, code:comp.code };
-
-  const bubble = document.createElement("div");
-  bubble.className = "bubble assistant";
-  bubble.style.cssText = "border-color:hsl(140,35%,25%);background:hsl(140,20%,12%);";
-  bubble.innerHTML = `
-    <div style="font-size:10px;font-weight:700;color:hsl(140,50%,55%);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">\u2713 Component Created</div>
-    <div style="font-size:12px;font-weight:500;margin-bottom:2px;">${comp.name}</div>
-    <div style="font-size:11px;color:var(--dim);">${comp.description}</div>
-    <div style="margin-top:8px;">
-      <button class="btn" style="font-size:10.5px;height:22px;padding:2px 10px;">View in Components &rarr;</button>
-    </div>`;
-  bubble.querySelector(".btn").addEventListener("click", () => switchTab("components"));
-  box.appendChild(bubble);
-  box.scrollTop = box.scrollHeight;
-  turns.push({ role:"assistant", content:`Component created: ${comp.name} — ${comp.description}` });
-}
-
-async function fetchComponentFromLLM(description) {
-  const activeModel = cfg.models.find(m => m.id === cfg.activeModelId) ?? cfg.models[0];
-  const provider    = activeModel?.provider || "anthropic";
-  const sys         = buildComponentSystemPrompt(description);
-  const userMsg     = `Build this component: ${description}`;
-  let raw = "";
-
-  if (provider === "anthropic") {
-    if (!cfg.anthropicApiKey) throw new Error("No Anthropic API key");
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json","anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-calls":"true","x-api-key":cfg.anthropicApiKey },
-      body: JSON.stringify({ model:activeModel.id, max_tokens:4096, system:sys,
-        messages:[{ role:"user", content:userMsg }] })
-    });
-    if (!r.ok) throw new Error(`API ${r.status}`);
-    const d = await r.json();
-    raw = d.content.filter(b => b.type==="text").map(b => b.text).join("");
-  } else {
-    const key = provider==="openai" ? cfg.openaiApiKey
-              : provider==="gemini" ? cfg.geminiApiKey
-              : (cfg.anthropicApiKey || cfg.openaiApiKey);
-    const ep  = provider==="openai"  ? "https://api.openai.com/v1/chat/completions"
-              : provider==="gemini"  ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-              : provider==="ollama"  ? (cfg.ollamaEndpoint||"http://localhost:11434").replace(/\/$/,"")+"/api/chat"
-              : cfg.customEndpoint + "/chat/completions";
-    if (!key && provider !== "ollama") throw new Error(`No API key for ${provider}`);
-    const body = provider==="ollama"
-      ? { model:cfg.ollamaModel||"llama3", stream:false, system:sys, messages:[{role:"user",content:userMsg}] }
-      : { model:activeModel.id, max_tokens:4096, response_format:{type:"json_object"},
-          messages:[{role:"system",content:sys},{role:"user",content:userMsg}] };
-    const r = await fetch(ep, { method:"POST",
-      headers:{ "Content-Type":"application/json", ...(key?{Authorization:`Bearer ${key}`}:{}) },
-      body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(`API ${r.status}`);
-    const d = await r.json();
-    raw = provider==="ollama" ? d.message?.content||"" : d.choices?.[0]?.message?.content||"";
-  }
-
-  const clean = raw.replace(/^```json\s*/i,"").replace(/```\s*$/,"").trim();
-  try { return JSON.parse(clean); } catch {
-    const m = raw.match(/\{[\s\S]*"code"[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
-    throw new Error("Could not parse component JSON");
-  }
-}
-
-function buildComponentSystemPrompt(description) {
-  const tracks = snapshot.tracks.map(t => `"${t.name}" (${t.type})`).join(", ");
-  return `You are a UI component builder for Q, an Ableton Live extension.
-Return ONLY a JSON object — no prose, no markdown:
-{ "name": "...", "description": "...", "code": "<full HTML>" }
-
-## Ableton web components (CDN)
-<link rel="stylesheet" href="https://unpkg.com/ableton-web-components/dist/ableton-web-components.css">
-<script type="module" src="https://unpkg.com/ableton-web-components"><\/script>
-Available: <able-dial value min max step default decimals label unit accent triangle bipolar hide-name hide-value>
-Events: dial.addEventListener("input", e => e.detail.value)  // while dragging
-        dial.addEventListener("change", e => e.detail.value) // on release
-For sliders: <input type="range"> with CSS vars. For buttons: <button>.
-
-## CSS vars
---bg #222; --text hsl(0,0%,71%); --dim hsl(0,0%,45%); --accent hsl(31,100%,67%);
---border hsl(0,0%,9%); --input-bg hsl(0,0%,11%); --r 3px;
-Also all --able-* variables from ableton-web-components.
-
-## Receiving session state
-let snapshot = JSON.parse(decodeURIComponent("__SNAPSHOT__"));
-window.addEventListener("message", e => { if(e.data.type==="snapshot") snapshot=e.data.snapshot; });
-
-## Sending actions to Q
-try {
-  window.parent.postMessage({ type:"component-actions", componentId:"__COMPONENT_ID__",
-    actions:[...] }, "*");
-} catch(_e) { console.log("dev mode - actions:", actions); }
-
-## Action types
-set_tempo(bpm), mute_track(trackName,muted), solo_track(trackName,soloed),
-arm_track(trackName,armed), rename_track(trackName,newName),
-set_device_param(trackName,deviceName,paramName,value),
-insert_device(trackName,deviceName,index), delete_device(trackName,deviceName),
-create_midi_track(name?), create_audio_track(name?), delete_track(trackName),
-execute_js(code,description) — for loops, warp data, bulk ops
-
-## Current session
-Tracks: ${tracks}
-Tempo: ${snapshot.tempo} BPM
-
-## Rules
-- Fully self-contained HTML. No external resources except the CDN above.
-- Compact: ~360px wide, under 500px tall.
-- Initialize snapshot from __SNAPSHOT__. Use __COMPONENT_ID__ in postMessage.
-- Use execute_js for: slicing silence, reading clip data, loops over tracks.
-- Build EXACTLY what was described.`;
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Init

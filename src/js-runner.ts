@@ -87,9 +87,13 @@ export async function runJsTool(
 
   // Run inside withinTransaction so the whole operation is one undo step
   try {
-    const result = await api.withinTransaction(() =>
-      fn({ api, sdk, song, log })
-    );
+    const timeoutMs = 30000;
+    const result = await Promise.race([
+      api.withinTransaction(() => fn({ api, sdk, song, log })),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`JS tool timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+      ),
+    ]);
     return { ok: true, result: result ?? null, logs };
   } catch (e) {
     return { ok: false, error: String(e), logs };

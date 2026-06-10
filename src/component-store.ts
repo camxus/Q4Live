@@ -34,10 +34,13 @@ export class ComponentStore {
   }
 
   save(component: Omit<QComponent, "id" | "createdAt" | "updatedAt">): QComponent {
+    if (component.code.length > 1024 * 1024) {
+      throw new Error(`Component code exceeds 1 MB limit (${component.code.length} bytes)`);
+    }
     const now = new Date().toISOString();
     const c: QComponent = {
       ...component,
-      id:        Math.random().toString(36).slice(2, 10),
+      id:        crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
     };
